@@ -1,0 +1,12 @@
+{
+  "firstName": "Mohamed",
+  "lastName": "Trabelsi",
+  "email": "mohamed.trabelsi@worklink.com",
+  "password": "AdminPass123!",
+  "gender": "MALE",
+  "dateOfBirth": "1988-11-10",
+  "phoneNumber": "+21655443322",
+  "currentPosition": "System Administrator",
+  "yearsOfExperience": 8,
+  "department": "IT Administration"
+}

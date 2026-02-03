@@ -1,0 +1,17 @@
+{
+  "companyName": "TechSolutions Tunisia",
+  "email": "contact@techsolutions.tn",
+  "password": "CompanyPass123!",
+  "address": "Avenue Habib Bourguiba, Tunis 1000, Tunisia",
+  "websiteUrl": "https://www.techsolutions.tn",
+  "legalForm": "SARL",
+  "tradeRegister": "B123456789",
+  "foundationDate": "2015-03-20",
+  "businessSector": "Information Technology",
+  "managerName": "Fatma Karoui",
+  "managerEmail": "fatma.karoui@techsolutions.tn",
+  "managerPosition": "CEO",
+  "managerPhoneNumber": "+21698765432",
+  "description": "Leading IT consulting company in Tunisia",
+  "numberOfEmployees": 50
+}

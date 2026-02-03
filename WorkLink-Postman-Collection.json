@@ -1,0 +1,366 @@
+{
+  "info": {
+    "name": "WorkLink API - Complete Collection",
+    "description": "Complete API testing collection for WorkLink authentication and user management",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "freelancer_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "company_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register Freelancer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"freelancer_token\", jsonData.token);",
+                  "    pm.environment.set(\"freelancer_id\", jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Ahmed\",\n  \"lastName\": \"Ben Ali\",\n  \"email\": \"ahmed.benali@example.com\",\n  \"password\": \"Password123!\",\n  \"gender\": \"MALE\",\n  \"dateOfBirth\": \"1995-05-15\",\n  \"phoneNumber\": \"+21612345678\",\n  \"yearsOfExperience\": 5,\n  \"profileTypes\": [\"STUDIES_DEVELOPMENT\", \"NEW_TECHNOLOGIES\"],\n  \"tjm\": 450.0,\n  \"languages\": [\"FRENCH\", \"ENGLISH\", \"ARABIC\"],\n  \"currentPosition\": \"Senior Full Stack Developer\",\n  \"bio\": \"Experienced full-stack developer specialized in Spring Boot and Angular\",\n  \"skills\": [\"Java\", \"Spring Boot\", \"Angular\", \"MongoDB\", \"Docker\"],\n  \"portfolioUrl\": \"https://github.com/ahmedbenali\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register/freelancer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register", "freelancer"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Company",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"company_token\", jsonData.token);",
+                  "    pm.environment.set(\"company_id\", jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"TechSolutions Tunisia\",\n  \"email\": \"contact@techsolutions.tn\",\n  \"password\": \"CompanyPass123!\",\n  \"address\": \"Avenue Habib Bourguiba, Tunis 1000, Tunisia\",\n  \"websiteUrl\": \"https://www.techsolutions.tn\",\n  \"legalForm\": \"SARL\",\n  \"tradeRegister\": \"B123456789\",\n  \"foundationDate\": \"2015-03-20\",\n  \"businessSector\": \"Information Technology\",\n  \"managerName\": \"Fatma Karoui\",\n  \"managerEmail\": \"fatma.karoui@techsolutions.tn\",\n  \"managerPosition\": \"CEO\",\n  \"managerPhoneNumber\": \"+21698765432\",\n  \"description\": \"Leading IT consulting company in Tunisia\",\n  \"numberOfEmployees\": 50\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register/entreprise",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register", "entreprise"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"admin_token\", jsonData.token);",
+                  "    pm.environment.set(\"admin_id\", jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Mohamed\",\n  \"lastName\": \"Trabelsi\",\n  \"email\": \"mohamed.trabelsi@worklink.com\",\n  \"password\": \"AdminPass123!\",\n  \"gender\": \"MALE\",\n  \"dateOfBirth\": \"1988-11-10\",\n  \"phoneNumber\": \"+21655443322\",\n  \"currentPosition\": \"System Administrator\",\n  \"yearsOfExperience\": 8,\n  \"department\": \"IT Administration\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register/admin",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register", "admin"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login Freelancer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"freelancer_token\", jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ahmed.benali@example.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login Company",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"company_token\", jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"contact@techsolutions.tn\",\n  \"password\": \"CompanyPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"admin_token\", jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"mohamed.trabelsi@worklink.com\",\n  \"password\": \"AdminPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Protected Routes (Test)",
+      "item": [
+        {
+          "name": "Test Freelancer Access",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{freelancer_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/test/freelancer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "test", "freelancer"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test Company Access",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{company_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/test/entreprise",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "test", "entreprise"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test Admin Access",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/test/admin",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "test", "admin"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Additional Test Users",
+      "item": [
+        {
+          "name": "Register Freelancer 2 (Frontend Developer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Sarah\",\n  \"lastName\": \"Jebali\",\n  \"email\": \"sarah.jebali@example.com\",\n  \"password\": \"Password123!\",\n  \"gender\": \"FEMALE\",\n  \"dateOfBirth\": \"1992-08-22\",\n  \"phoneNumber\": \"+21623456789\",\n  \"yearsOfExperience\": 4,\n  \"profileTypes\": [\"STUDIES_DEVELOPMENT\"],\n  \"tjm\": 380.0,\n  \"languages\": [\"FRENCH\", \"ENGLISH\"],\n  \"currentPosition\": \"Frontend Developer\",\n  \"bio\": \"Passionate frontend developer with expertise in modern JavaScript frameworks\",\n  \"skills\": [\"React\", \"Vue.js\", \"TypeScript\", \"CSS\", \"Figma\"],\n  \"portfolioUrl\": \"https://sarahjebali.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register/freelancer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register", "freelancer"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Company 2 (Startup)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"InnovateTech\",\n  \"email\": \"contact@innovatetech.tn\",\n  \"password\": \"CompanyPass456!\",\n  \"address\": \"Lac 2, Tunis, Tunisia\",\n  \"websiteUrl\": \"https://www.innovatetech.tn\",\n  \"legalForm\": \"SAS\",\n  \"tradeRegister\": \"B987654321\",\n  \"foundationDate\": \"2020-06-15\",\n  \"businessSector\": \"Software Development\",\n  \"managerName\": \"Karim Messaoudi\",\n  \"managerEmail\": \"karim.messaoudi@innovatetech.tn\",\n  \"managerPosition\": \"CTO\",\n  \"managerPhoneNumber\": \"+21699887766\",\n  \"description\": \"Innovative startup focused on AI and machine learning solutions\",\n  \"numberOfEmployees\": 15\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register/entreprise",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register", "entreprise"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

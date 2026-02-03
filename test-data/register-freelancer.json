@@ -1,0 +1,17 @@
+{
+  "firstName": "Ahmed",
+  "lastName": "Ben Ali",
+  "email": "ahmed.benali@example.com",
+  "password": "Password123!",
+  "gender": "MALE",
+  "dateOfBirth": "1995-05-15",
+  "phoneNumber": "+21612345678",
+  "yearsOfExperience": 5,
+  "profileTypes": ["STUDIES_DEVELOPMENT", "NEW_TECHNOLOGIES"],
+  "tjm": 450.0,
+  "languages": ["FRENCH", "ENGLISH", "ARABIC"],
+  "currentPosition": "Senior Full Stack Developer",
+  "bio": "Experienced full-stack developer specialized in Spring Boot and Angular",
+  "skills": ["Java", "Spring Boot", "Angular", "MongoDB", "Docker"],
+  "portfolioUrl": "https://github.com/ahmedbenali"
+}

@@ -1,0 +1,675 @@
+{
+	"info": {
+		"_postman_id": "worklink-api-collection-2026",
+		"name": "WorkLink API - Complete Collection",
+		"description": "Complete API collection for WorkLink platform with authentication, user registration, and protected routes testing.\n\n## Features:\n- Automatic JWT token management\n- Pre-configured test data\n- Response validation scripts\n- Environment variables for easy testing\n\n## Quick Start:\n1. Import this collection\n2. Run requests in Authentication folder\n3. Tokens are saved automatically\n4. Test protected routes\n\n## Base URL: http://localhost:8080",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Register Freelancer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Save token if registration successful",
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"freelancer_token\", jsonData.token);",
+									"    pm.collectionVariables.set(\"freelancer_id\", jsonData.id);",
+									"    pm.collectionVariables.set(\"freelancer_email\", jsonData.email);",
+									"    ",
+									"    console.log(\"✅ Freelancer registered successfully!\");",
+									"    console.log(\"📧 Email: \" + jsonData.email);",
+									"    console.log(\"🔑 Token saved to collection variables\");",
+									"    ",
+									"    pm.test(\"Status code is 201 Created\", function () {",
+									"        pm.response.to.have.status(201);",
+									"    });",
+									"    ",
+									"    pm.test(\"Response has token\", function () {",
+									"        pm.expect(jsonData.token).to.be.a('string');",
+									"        pm.expect(jsonData.token.length).to.be.above(10);",
+									"    });",
+									"    ",
+									"    pm.test(\"Role is FREELANCER\", function () {",
+									"        pm.expect(jsonData.role).to.eql('FREELANCER');",
+									"    });",
+									"} else {",
+									"    console.log(\"❌ Registration failed\");",
+									"    console.log(\"Response: \" + pm.response.text());",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"Ahmed\",\n  \"lastName\": \"Ben Ali\",\n  \"email\": \"ahmed.benali@example.com\",\n  \"password\": \"Password123!\",\n  \"gender\": \"MALE\",\n  \"dateOfBirth\": \"1995-05-15\",\n  \"phoneNumber\": \"+21612345678\",\n  \"yearsOfExperience\": 5,\n  \"profileTypes\": [\"STUDIES_DEVELOPMENT\", \"NEW_TECHNOLOGIES\"],\n  \"tjm\": 450.0,\n  \"languages\": [\"FRENCH\", \"ENGLISH\", \"ARABIC\"],\n  \"currentPosition\": \"Senior Full Stack Developer\",\n  \"bio\": \"Experienced full-stack developer specialized in Spring Boot and Angular\",\n  \"skills\": [\"Java\", \"Spring Boot\", \"Angular\", \"MongoDB\", \"Docker\"],\n  \"portfolioUrl\": \"https://github.com/ahmedbenali\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register/freelancer",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register",
+								"freelancer"
+							]
+						},
+						"description": "Register a new freelancer account.\n\n**Required Fields:**\n- firstName, lastName\n- email (must be unique)\n- password (minimum 8 characters)\n- gender (MALE, FEMALE, OTHER)\n- dateOfBirth (YYYY-MM-DD format)\n- phoneNumber (E.164 format)\n- yearsOfExperience\n- profileTypes (array)\n- tjm (daily rate)\n- languages (array)\n\n**Response:** JWT token + user details"
+					},
+					"response": []
+				},
+				{
+					"name": "Register Company",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Save token if registration successful",
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"company_token\", jsonData.token);",
+									"    pm.collectionVariables.set(\"company_id\", jsonData.id);",
+									"    pm.collectionVariables.set(\"company_email\", jsonData.email);",
+									"    ",
+									"    console.log(\"✅ Company registered successfully!\");",
+									"    console.log(\"📧 Email: \" + jsonData.email);",
+									"    console.log(\"🔑 Token saved to collection variables\");",
+									"    ",
+									"    pm.test(\"Status code is 201 Created\", function () {",
+									"        pm.response.to.have.status(201);",
+									"    });",
+									"    ",
+									"    pm.test(\"Response has token\", function () {",
+									"        pm.expect(jsonData.token).to.be.a('string');",
+									"    });",
+									"    ",
+									"    pm.test(\"Role is COMPANY\", function () {",
+									"        pm.expect(jsonData.role).to.eql('COMPANY');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"companyName\": \"TechSolutions Tunisia\",\n  \"email\": \"contact@techsolutions.tn\",\n  \"password\": \"CompanyPass123!\",\n  \"address\": \"Avenue Habib Bourguiba, Tunis 1000, Tunisia\",\n  \"websiteUrl\": \"https://www.techsolutions.tn\",\n  \"legalForm\": \"SARL\",\n  \"tradeRegister\": \"B123456789\",\n  \"foundationDate\": \"2015-03-20\",\n  \"businessSector\": \"Information Technology\",\n  \"managerName\": \"Fatma Karoui\",\n  \"managerEmail\": \"fatma.karoui@techsolutions.tn\",\n  \"managerPosition\": \"CEO\",\n  \"managerPhoneNumber\": \"+21698765432\",\n  \"description\": \"Leading IT consulting company in Tunisia\",\n  \"numberOfEmployees\": 50\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register/entreprise",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register",
+								"entreprise"
+							]
+						},
+						"description": "Register a new company account.\n\n**Required Fields:**\n- companyName\n- email (must be unique)\n- password (minimum 8 characters)\n- address\n- legalForm (SARL, SAS, PAS, SUARL, OTHER)\n- tradeRegister\n- foundationDate\n- businessSector\n- Manager details (name, email, position, phone)\n\n**Response:** JWT token + company details"
+					},
+					"response": []
+				},
+				{
+					"name": "Register Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Save token if registration successful",
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"admin_token\", jsonData.token);",
+									"    pm.collectionVariables.set(\"admin_id\", jsonData.id);",
+									"    pm.collectionVariables.set(\"admin_email\", jsonData.email);",
+									"    ",
+									"    console.log(\"✅ Admin registered successfully!\");",
+									"    console.log(\"📧 Email: \" + jsonData.email);",
+									"    console.log(\"🔑 Token saved to collection variables\");",
+									"    ",
+									"    pm.test(\"Status code is 201 Created\", function () {",
+									"        pm.response.to.have.status(201);",
+									"    });",
+									"    ",
+									"    pm.test(\"Role is ADMIN\", function () {",
+									"        pm.expect(jsonData.role).to.eql('ADMIN');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"Mohamed\",\n  \"lastName\": \"Trabelsi\",\n  \"email\": \"mohamed.trabelsi@worklink.com\",\n  \"password\": \"AdminPass123!\",\n  \"gender\": \"MALE\",\n  \"dateOfBirth\": \"1988-11-10\",\n  \"phoneNumber\": \"+21655443322\",\n  \"currentPosition\": \"System Administrator\",\n  \"yearsOfExperience\": 8,\n  \"department\": \"IT Administration\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register/admin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register",
+								"admin"
+							]
+						},
+						"description": "Register a new admin account.\n\n**Required Fields:**\n- firstName, lastName\n- email (must be unique)\n- password (minimum 8 characters)\n- gender\n- dateOfBirth\n- phoneNumber\n\n**Optional:**\n- currentPosition\n- yearsOfExperience\n- department"
+					},
+					"response": []
+				},
+				{
+					"name": "Login (Any User)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    ",
+									"    // Save token based on role",
+									"    if (jsonData.role === 'FREELANCER') {",
+									"        pm.collectionVariables.set(\"freelancer_token\", jsonData.token);",
+									"        console.log(\"✅ Freelancer logged in\");",
+									"    } else if (jsonData.role === 'COMPANY') {",
+									"        pm.collectionVariables.set(\"company_token\", jsonData.token);",
+									"        console.log(\"✅ Company logged in\");",
+									"    } else if (jsonData.role === 'ADMIN') {",
+									"        pm.collectionVariables.set(\"admin_token\", jsonData.token);",
+									"        console.log(\"✅ Admin logged in\");",
+									"    }",
+									"    ",
+									"    console.log(\"📧 Email: \" + jsonData.email);",
+									"    console.log(\"👤 Role: \" + jsonData.role);",
+									"    console.log(\"🔑 Token saved\");",
+									"    ",
+									"    pm.test(\"Login successful\", function () {",
+									"        pm.response.to.have.status(200);",
+									"        pm.expect(jsonData.message).to.include('réussie');",
+									"    });",
+									"} else {",
+									"    console.log(\"❌ Login failed\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"ahmed.benali@example.com\",\n  \"password\": \"Password123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login with any user type (Freelancer, Company, or Admin).\n\n**Test Credentials:**\n\nFreelancer:\n- Email: ahmed.benali@example.com\n- Password: Password123!\n\nCompany:\n- Email: contact@techsolutions.tn\n- Password: CompanyPass123!\n\nAdmin:\n- Email: mohamed.trabelsi@worklink.com\n- Password: AdminPass123!"
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication endpoints for user registration and login.\n\nAll registration endpoints return a JWT token that is automatically saved to collection variables."
+		},
+		{
+			"name": "2. Protected Routes",
+			"item": [
+				{
+					"name": "Test Freelancer Access",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Freelancer access granted\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.text()).to.include('Freelancer');",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    console.log(\"✅ Freelancer access granted\");",
+									"} else if (pm.response.code === 401) {",
+									"    console.log(\"❌ Unauthorized - Token missing or invalid\");",
+									"    console.log(\"💡 Tip: Run 'Register Freelancer' or 'Login' first\");",
+									"} else if (pm.response.code === 403) {",
+									"    console.log(\"❌ Forbidden - Wrong role\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{freelancer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/test/freelancer",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"test",
+								"freelancer"
+							]
+						},
+						"description": "Test endpoint requiring FREELANCER role.\n\n**Authentication:** Bearer token (FREELANCER role required)\n\n**How to get token:**\n1. Run 'Register Freelancer' or\n2. Run 'Login' with freelancer credentials\n\nToken is automatically saved and used by this request."
+					},
+					"response": []
+				},
+				{
+					"name": "Test Company Access",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Company access granted\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.text()).to.include('Entreprise');",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    console.log(\"✅ Company access granted\");",
+									"} else if (pm.response.code === 401) {",
+									"    console.log(\"❌ Unauthorized - Token missing or invalid\");",
+									"    console.log(\"💡 Tip: Run 'Register Company' or 'Login' first\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{company_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/test/entreprise",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"test",
+								"entreprise"
+							]
+						},
+						"description": "Test endpoint requiring COMPANY role.\n\n**Authentication:** Bearer token (COMPANY role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Test Admin Access",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Admin access granted\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.text()).to.include('Admin');",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    console.log(\"✅ Admin access granted\");",
+									"} else if (pm.response.code === 401) {",
+									"    console.log(\"❌ Unauthorized - Token missing or invalid\");",
+									"    console.log(\"💡 Tip: Run 'Register Admin' or 'Login' first\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{admin_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/test/admin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"test",
+								"admin"
+							]
+						},
+						"description": "Test endpoint requiring ADMIN role.\n\n**Authentication:** Bearer token (ADMIN role required)"
+					},
+					"response": []
+				}
+			],
+			"description": "Protected endpoints that require JWT authentication.\n\nTokens are automatically used from collection variables."
+		},
+		{
+			"name": "3. Additional Test Users",
+			"item": [
+				{
+					"name": "Register Freelancer - Frontend Dev",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    console.log(\"✅ Frontend Developer registered\");",
+									"    pm.test(\"Registration successful\", function () {",
+									"        pm.response.to.have.status(201);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"Sarah\",\n  \"lastName\": \"Jebali\",\n  \"email\": \"sarah.jebali@example.com\",\n  \"password\": \"Password123!\",\n  \"gender\": \"FEMALE\",\n  \"dateOfBirth\": \"1992-08-22\",\n  \"phoneNumber\": \"+21623456789\",\n  \"yearsOfExperience\": 4,\n  \"profileTypes\": [\"STUDIES_DEVELOPMENT\"],\n  \"tjm\": 380.0,\n  \"languages\": [\"FRENCH\", \"ENGLISH\"],\n  \"currentPosition\": \"Frontend Developer\",\n  \"bio\": \"Passionate frontend developer with expertise in modern JavaScript frameworks\",\n  \"skills\": [\"React\", \"Vue.js\", \"TypeScript\", \"CSS\", \"Figma\"],\n  \"portfolioUrl\": \"https://sarahjebali.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register/freelancer",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register",
+								"freelancer"
+							]
+						},
+						"description": "Register another freelancer with different profile (Frontend Developer)"
+					},
+					"response": []
+				},
+				{
+					"name": "Register Company - Startup",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    console.log(\"✅ Startup company registered\");",
+									"    pm.test(\"Registration successful\", function () {",
+									"        pm.response.to.have.status(201);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"companyName\": \"InnovateTech\",\n  \"email\": \"contact@innovatetech.tn\",\n  \"password\": \"CompanyPass456!\",\n  \"address\": \"Lac 2, Tunis, Tunisia\",\n  \"websiteUrl\": \"https://www.innovatetech.tn\",\n  \"legalForm\": \"SAS\",\n  \"tradeRegister\": \"B987654321\",\n  \"foundationDate\": \"2020-06-15\",\n  \"businessSector\": \"Software Development\",\n  \"managerName\": \"Karim Messaoudi\",\n  \"managerEmail\": \"karim.messaoudi@innovatetech.tn\",\n  \"managerPosition\": \"CTO\",\n  \"managerPhoneNumber\": \"+21699887766\",\n  \"description\": \"Innovative startup focused on AI and machine learning solutions\",\n  \"numberOfEmployees\": 15\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register/entreprise",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register",
+								"entreprise"
+							]
+						},
+						"description": "Register a smaller startup company for testing different scenarios"
+					},
+					"response": []
+				},
+				{
+					"name": "Register Freelancer - Data Scientist",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    console.log(\"✅ Data Scientist registered\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"Youssef\",\n  \"lastName\": \"Hamdi\",\n  \"email\": \"youssef.hamdi@example.com\",\n  \"password\": \"Password123!\",\n  \"gender\": \"MALE\",\n  \"dateOfBirth\": \"1990-03-10\",\n  \"phoneNumber\": \"+21698123456\",\n  \"yearsOfExperience\": 6,\n  \"profileTypes\": [\"BI_DATA\", \"NEW_TECHNOLOGIES\"],\n  \"tjm\": 520.0,\n  \"languages\": [\"FRENCH\", \"ENGLISH\", \"ARABIC\"],\n  \"currentPosition\": \"Senior Data Scientist\",\n  \"bio\": \"Data scientist specialized in machine learning and big data analytics\",\n  \"skills\": [\"Python\", \"TensorFlow\", \"Pandas\", \"SQL\", \"Spark\", \"Azure ML\"],\n  \"portfolioUrl\": \"https://github.com/youssefhamdi\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register/freelancer",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register",
+								"freelancer"
+							]
+						},
+						"description": "Register a Data Scientist with BI_DATA profile type"
+					},
+					"response": []
+				}
+			],
+			"description": "Additional test users with different profiles and roles for comprehensive testing"
+		},
+		{
+			"name": "4. Reference - Enum Values",
+			"item": [
+				{
+					"name": "📖 Enum Values Reference",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}",
+							"host": [
+								"{{baseUrl}}"
+							]
+						},
+						"description": "# Enum Values Reference\n\nThis is a reference document showing all valid enum values for registration requests.\n\n## Gender\n- MALE\n- FEMALE\n- OTHER\n\n## Profile Types (Freelancers)\n- BI_DATA\n- BUSINESS_CONSULTING\n- ERP_CRM\n- INDUSTRIAL_IT_ELECTRONICS\n- NEW_TECHNOLOGIES\n- OFFICE_SUPPORT\n- TESTING_QUALITY\n- SYSTEM_RESOURCES\n- STUDIES_DEVELOPMENT\n- SYSTEMS_INFRASTRUCTURE\n- OTHER\n\n## Languages\n- FRENCH\n- ENGLISH\n- ARABIC\n- SPANISH\n- GERMAN\n- ITALIAN\n- PORTUGUESE\n- CHINESE\n- JAPANESE\n- OTHER\n\n## Legal Forms (Companies)\n- SARL (Société à Responsabilité Limitée)\n- SAS (Société par Actions Simplifiée)\n- PAS (Société en Participation)\n- SUARL (Société Unipersonnelle à Responsabilité Limitée)\n- OTHER\n\n## Date Format\n- All dates must be in format: **YYYY-MM-DD**\n- Example: \"1995-05-15\"\n\n## Phone Number Format\n- International format recommended: **+216XXXXXXXX**\n- Must be 8-15 digits\n- Can include + prefix\n\n## Password Requirements\n- Minimum 8 characters\n- Recommended: Mix of letters, numbers, and special characters"
+					},
+					"response": []
+				}
+			],
+			"description": "Reference documentation for enum values and data formats"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// This runs before every request",
+					"console.log(\"🚀 Sending request to: \" + pm.request.url);"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// This runs after every request",
+					"console.log(\"📊 Response status: \" + pm.response.code + \" \" + pm.response.status);"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "freelancer_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "company_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "admin_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "freelancer_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "company_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "admin_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "freelancer_email",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "company_email",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "admin_email",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

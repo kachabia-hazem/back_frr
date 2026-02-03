@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(./mvnw clean:*)",
+      "Bash(mvnw.cmd clean install:*)",
+      "Bash(cmd /c \"mvnw.cmd clean install -DskipTests\")",
+      "Bash(where mvn:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(ls:*)",
+      "Bash(curl:*)",
+      "Bash(openssl rand:*)"
+    ]
+  }
+}

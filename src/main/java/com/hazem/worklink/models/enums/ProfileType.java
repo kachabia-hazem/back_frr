@@ -1,0 +1,15 @@
+package com.hazem.worklink.models.enums;
+
+public enum ProfileType {
+    BI_DATA,
+    BUSINESS_CONSULTING,
+    ERP_CRM,
+    INDUSTRIAL_IT_ELECTRONICS,
+    NEW_TECHNOLOGIES,
+    OFFICE_SUPPORT,
+    TESTING_QUALITY,
+    SYSTEM_RESOURCES,
+    STUDIES_DEVELOPMENT,
+    SYSTEMS_INFRASTRUCTURE,
+    OTHER
+}
