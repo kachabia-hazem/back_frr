@@ -16,6 +16,17 @@ public class FreelancerController {
 
     private final FreelancerService freelancerService;
 
+    @GetMapping("/public/{id}")
+    public ResponseEntity<Freelancer> getFreelancerById(@PathVariable String id) {
+        Freelancer freelancer = freelancerService.getFreelancerById(id);
+        return ResponseEntity.ok(freelancer);
+    }
+
+    @GetMapping("/public/all")
+    public ResponseEntity<java.util.List<Freelancer>> getAllFreelancers() {
+        return ResponseEntity.ok(freelancerService.getAllFreelancers());
+    }
+
     @GetMapping("/me")
     public ResponseEntity<Freelancer> getMyProfile(Authentication authentication) {
         String email = authentication.getName();

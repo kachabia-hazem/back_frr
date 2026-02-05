@@ -45,6 +45,8 @@ public class Freelancer extends User {
 
     private String currentPosition;
 
+    private String location;
+
     // Informations supplémentaires optionnelles
     private String bio;
 

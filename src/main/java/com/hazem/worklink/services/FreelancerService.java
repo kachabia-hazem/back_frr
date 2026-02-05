@@ -8,11 +8,22 @@ import com.hazem.worklink.repositories.FreelancerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class FreelancerService {
 
     private final FreelancerRepository freelancerRepository;
+
+    public Freelancer getFreelancerById(String id) {
+        return freelancerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found with id: " + id));
+    }
+
+    public List<Freelancer> getAllFreelancers() {
+        return freelancerRepository.findAll();
+    }
 
     public Freelancer getFreelancerByEmail(String email) {
         return freelancerRepository.findByEmail(email)
@@ -51,6 +62,9 @@ public class FreelancerService {
         }
         if (request.getCurrentPosition() != null) {
             freelancer.setCurrentPosition(request.getCurrentPosition());
+        }
+        if (request.getLocation() != null) {
+            freelancer.setLocation(request.getLocation());
         }
         if (request.getBio() != null) {
             freelancer.setBio(request.getBio());

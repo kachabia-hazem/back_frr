@@ -24,6 +24,7 @@ public class FileStorageService {
     private Path certificatesPath;
     private Path profilePicturesPath;
     private Path cvsPath;
+    private Path companyLogosPath;
 
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     private static final long MAX_CV_SIZE = 10 * 1024 * 1024; // 10MB for CVs
@@ -37,9 +38,11 @@ public class FileStorageService {
             certificatesPath = Paths.get(uploadDir, "certificates").toAbsolutePath().normalize();
             profilePicturesPath = Paths.get(uploadDir, "profile-pictures").toAbsolutePath().normalize();
             cvsPath = Paths.get(uploadDir, "cvs").toAbsolutePath().normalize();
+            companyLogosPath = Paths.get(uploadDir, "company-logos").toAbsolutePath().normalize();
             Files.createDirectories(certificatesPath);
             Files.createDirectories(profilePicturesPath);
             Files.createDirectories(cvsPath);
+            Files.createDirectories(companyLogosPath);
         } catch (IOException e) {
             throw new RuntimeException("Could not create upload directories", e);
         }
@@ -103,6 +106,26 @@ public class FileStorageService {
 
     public Path getCvPath(String fileName) {
         return cvsPath.resolve(fileName).normalize();
+    }
+
+    public String storeCompanyLogo(MultipartFile file) {
+        validateImageFile(file);
+
+        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
+        String fileExtension = getFileExtension(originalFileName);
+        String newFileName = UUID.randomUUID().toString() + "." + fileExtension;
+
+        try {
+            Path targetLocation = companyLogosPath.resolve(newFileName);
+            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            return "/api/files/company-logos/" + newFileName;
+        } catch (IOException e) {
+            throw new RuntimeException("Could not store company logo " + originalFileName, e);
+        }
+    }
+
+    public Path getCompanyLogoPath(String fileName) {
+        return companyLogosPath.resolve(fileName).normalize();
     }
 
     private void validateFile(MultipartFile file) {

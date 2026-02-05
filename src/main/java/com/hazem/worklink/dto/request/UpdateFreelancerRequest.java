@@ -25,6 +25,7 @@ public class UpdateFreelancerRequest {
     private Double tjm;
     private List<Language> languages;
     private String currentPosition;
+    private String location;
     private String bio;
     private List<String> skills;
     private String portfolioUrl;
