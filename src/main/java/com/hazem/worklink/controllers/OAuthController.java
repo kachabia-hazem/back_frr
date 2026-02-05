@@ -1,7 +1,7 @@
 package com.hazem.worklink.controllers;
 
+import com.hazem.worklink.dto.request.OAuthCompleteRequest;
 import com.hazem.worklink.dto.request.OAuthGoogleRequest;
-import com.hazem.worklink.dto.request.OAuthLinkedInCompleteRequest;
 import com.hazem.worklink.dto.request.OAuthLinkedInRequest;
 import com.hazem.worklink.dto.response.AuthResponse;
 import com.hazem.worklink.services.OAuthService;
@@ -40,11 +40,11 @@ public class OAuthController {
         }
     }
 
-    @PostMapping("/linkedin/complete-registration")
-    public ResponseEntity<AuthResponse> linkedInCompleteRegistration(
-            @Valid @RequestBody OAuthLinkedInCompleteRequest request) {
+    @PostMapping("/complete-registration")
+    public ResponseEntity<AuthResponse> oauthCompleteRegistration(
+            @Valid @RequestBody OAuthCompleteRequest request) {
         try {
-            AuthResponse response = oAuthService.linkedInCompleteRegistration(request);
+            AuthResponse response = oAuthService.oauthCompleteRegistration(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest()

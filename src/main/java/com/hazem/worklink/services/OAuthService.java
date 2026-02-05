@@ -4,10 +4,11 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
-import com.hazem.worklink.dto.request.OAuthLinkedInCompleteRequest;
+import com.hazem.worklink.dto.request.OAuthCompleteRequest;
 import com.hazem.worklink.dto.response.AuthResponse;
 import com.hazem.worklink.dto.response.LinkedInProfileResponse;
 import com.hazem.worklink.dto.response.LinkedInTokenResponse;
+import com.hazem.worklink.dto.response.OAuthProfileResponse;
 import com.hazem.worklink.models.Company;
 import com.hazem.worklink.models.Freelancer;
 import com.hazem.worklink.models.enums.AuthProvider;
@@ -56,7 +57,7 @@ public class OAuthService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     // ══════════════════════════════════════════════
-    //  Google OAuth - Login only (existing users)
+    //  Google OAuth - Login + Registration
     // ══════════════════════════════════════════════
 
     public AuthResponse googleLogin(String idTokenString) {
@@ -74,6 +75,9 @@ public class OAuthService {
             GoogleIdToken.Payload payload = idToken.getPayload();
             String email = payload.getEmail();
             String googleId = payload.getSubject();
+            String firstName = (String) payload.get("given_name");
+            String lastName = (String) payload.get("family_name");
+            String picture = (String) payload.get("picture");
 
             // Check if the user is an admin → block OAuth
             if (adminRepository.existsByEmail(email)) {
@@ -108,8 +112,21 @@ public class OAuthService {
                 return new AuthResponse(token, c.getEmail(), c.getRole(), c.getId(), "Connexion Google réussie");
             }
 
-            // No account found
-            throw new RuntimeException("Aucun compte trouvé avec cet email. Veuillez d'abord créer un compte.");
+            // New user → needs registration (select role)
+            OAuthProfileResponse profile = OAuthProfileResponse.builder()
+                    .providerId(googleId)
+                    .email(email)
+                    .firstName(firstName)
+                    .lastName(lastName)
+                    .picture(picture)
+                    .provider(AuthProvider.GOOGLE)
+                    .build();
+
+            AuthResponse response = new AuthResponse();
+            response.setNeedsRegistration(true);
+            response.setOauthProfile(profile);
+            response.setMessage("Veuillez sélectionner votre rôle pour continuer.");
+            return response;
 
         } catch (RuntimeException e) {
             throw e;
@@ -166,11 +183,20 @@ public class OAuthService {
                 return new AuthResponse(token, c.getEmail(), c.getRole(), c.getId(), "Connexion LinkedIn réussie");
             }
 
-            // 4. New user → needs registration
+            // 4. New user → needs registration (select role)
+            OAuthProfileResponse oauthProfile = OAuthProfileResponse.builder()
+                    .providerId(linkedInId)
+                    .email(email)
+                    .firstName(profile.getGivenName())
+                    .lastName(profile.getFamilyName())
+                    .picture(profile.getPicture())
+                    .provider(AuthProvider.LINKEDIN)
+                    .build();
+
             AuthResponse response = new AuthResponse();
             response.setNeedsRegistration(true);
-            response.setLinkedInProfile(profile);
-            response.setMessage("Inscription requise. Veuillez compléter votre profil.");
+            response.setOauthProfile(oauthProfile);
+            response.setMessage("Veuillez sélectionner votre rôle pour continuer.");
             return response;
 
         } catch (RuntimeException e) {
@@ -181,7 +207,11 @@ public class OAuthService {
         }
     }
 
-    public AuthResponse linkedInCompleteRegistration(OAuthLinkedInCompleteRequest request) {
+    // ══════════════════════════════════════════════
+    //  Generic OAuth Complete Registration (simple)
+    // ══════════════════════════════════════════════
+
+    public AuthResponse oauthCompleteRegistration(OAuthCompleteRequest request) {
         // Verify email not already taken
         if (freelancerRepository.existsByEmail(request.getEmail()) ||
                 companyRepository.existsByEmail(request.getEmail()) ||
@@ -194,16 +224,75 @@ public class OAuthService {
             throw new RuntimeException("L'inscription Admin via OAuth n'est pas autorisée");
         }
 
-        // Generate random password (user won't use it, they login via LinkedIn)
+        // Generate random password (user won't use it, they login via OAuth)
         String randomPassword = passwordEncoder.encode(UUID.randomUUID().toString());
 
         if (request.getRole() == Role.FREELANCER) {
-            return createFreelancerFromLinkedIn(request, randomPassword);
+            return createFreelancerFromOAuth(request, randomPassword);
         } else if (request.getRole() == Role.COMPANY) {
-            return createCompanyFromLinkedIn(request, randomPassword);
+            return createCompanyFromOAuth(request, randomPassword);
         }
 
         throw new RuntimeException("Rôle invalide");
+    }
+
+    private AuthResponse createFreelancerFromOAuth(OAuthCompleteRequest request, String encodedPassword) {
+        Freelancer freelancer = new Freelancer();
+        freelancer.setEmail(request.getEmail());
+        freelancer.setPassword(encodedPassword);
+        freelancer.setRole(Role.FREELANCER);
+        freelancer.setAuthProvider(request.getProvider());
+        freelancer.setProviderId(request.getProviderId());
+        freelancer.setIsActive(true);
+        freelancer.setCreatedAt(LocalDateTime.now());
+        freelancer.setUpdatedAt(LocalDateTime.now());
+
+        // Set basic info from OAuth provider
+        freelancer.setFirstName(request.getFirstName());
+        freelancer.setLastName(request.getLastName());
+        freelancer.setProfilePicture(request.getProfilePicture());
+
+        // Initialize with default values
+        freelancer.setCompletedProjects(0);
+        freelancer.setRating(0.0);
+
+        Freelancer saved = freelancerRepository.save(freelancer);
+
+        String token = jwtUtil.generateToken(saved.getEmail(), saved.getRole(), saved.getId());
+        return new AuthResponse(token, saved.getEmail(), saved.getRole(), saved.getId(),
+                "Inscription Freelancer via " + request.getProvider().name() + " réussie");
+    }
+
+    private AuthResponse createCompanyFromOAuth(OAuthCompleteRequest request, String encodedPassword) {
+        Company company = new Company();
+        company.setEmail(request.getEmail());
+        company.setPassword(encodedPassword);
+        company.setRole(Role.COMPANY);
+        company.setAuthProvider(request.getProvider());
+        company.setProviderId(request.getProviderId());
+        company.setIsActive(true);
+        company.setCreatedAt(LocalDateTime.now());
+        company.setUpdatedAt(LocalDateTime.now());
+
+        // Set manager info from OAuth provider
+        String fullName = "";
+        if (request.getFirstName() != null) {
+            fullName += request.getFirstName();
+        }
+        if (request.getLastName() != null) {
+            fullName += (fullName.isEmpty() ? "" : " ") + request.getLastName();
+        }
+        company.setManagerName(fullName.isEmpty() ? null : fullName);
+        company.setManagerEmail(request.getEmail());
+
+        // Initialize with default values
+        company.setPostedProjects(0);
+
+        Company saved = companyRepository.save(company);
+
+        String token = jwtUtil.generateToken(saved.getEmail(), saved.getRole(), saved.getId());
+        return new AuthResponse(token, saved.getEmail(), saved.getRole(), saved.getId(),
+                "Inscription Company via " + request.getProvider().name() + " réussie");
     }
 
     // ── Private helpers ──
@@ -249,73 +338,5 @@ public class OAuthService {
         }
 
         return response.getBody();
-    }
-
-    private AuthResponse createFreelancerFromLinkedIn(OAuthLinkedInCompleteRequest request, String encodedPassword) {
-        Freelancer freelancer = new Freelancer();
-        freelancer.setEmail(request.getEmail());
-        freelancer.setPassword(encodedPassword);
-        freelancer.setRole(Role.FREELANCER);
-        freelancer.setAuthProvider(AuthProvider.LINKEDIN);
-        freelancer.setProviderId(request.getLinkedInId());
-        freelancer.setIsActive(true);
-        freelancer.setCreatedAt(LocalDateTime.now());
-        freelancer.setUpdatedAt(LocalDateTime.now());
-
-        freelancer.setFirstName(request.getFirstName());
-        freelancer.setLastName(request.getLastName());
-        freelancer.setGender(request.getGender());
-        freelancer.setDateOfBirth(request.getDateOfBirth());
-        freelancer.setPhoneNumber(request.getPhoneNumber());
-        freelancer.setYearsOfExperience(request.getYearsOfExperience());
-        freelancer.setProfileTypes(request.getProfileTypes());
-        freelancer.setTjm(request.getTjm());
-        freelancer.setLanguages(request.getLanguages());
-        freelancer.setCurrentPosition(request.getCurrentPosition());
-        freelancer.setBio(request.getBio());
-        freelancer.setSkills(request.getSkills());
-        freelancer.setPortfolioUrl(request.getPortfolioUrl());
-        freelancer.setProfilePicture(request.getProfilePicture());
-        freelancer.setCompletedProjects(0);
-        freelancer.setRating(0.0);
-
-        Freelancer saved = freelancerRepository.save(freelancer);
-
-        String token = jwtUtil.generateToken(saved.getEmail(), saved.getRole(), saved.getId());
-        return new AuthResponse(token, saved.getEmail(), saved.getRole(), saved.getId(),
-                "Inscription Freelancer via LinkedIn réussie");
-    }
-
-    private AuthResponse createCompanyFromLinkedIn(OAuthLinkedInCompleteRequest request, String encodedPassword) {
-        Company company = new Company();
-        company.setEmail(request.getEmail());
-        company.setPassword(encodedPassword);
-        company.setRole(Role.COMPANY);
-        company.setAuthProvider(AuthProvider.LINKEDIN);
-        company.setProviderId(request.getLinkedInId());
-        company.setIsActive(true);
-        company.setCreatedAt(LocalDateTime.now());
-        company.setUpdatedAt(LocalDateTime.now());
-
-        company.setCompanyName(request.getCompanyName());
-        company.setAddress(request.getAddress());
-        company.setWebsiteUrl(request.getWebsiteUrl());
-        company.setLegalForm(request.getLegalForm());
-        company.setTradeRegister(request.getTradeRegister());
-        company.setFoundationDate(request.getFoundationDate());
-        company.setBusinessSector(request.getBusinessSector());
-        company.setManagerName(request.getManagerName());
-        company.setManagerEmail(request.getManagerEmail());
-        company.setManagerPosition(request.getManagerPosition());
-        company.setManagerPhoneNumber(request.getManagerPhoneNumber());
-        company.setDescription(request.getDescription());
-        company.setNumberOfEmployees(request.getNumberOfEmployees());
-        company.setPostedProjects(0);
-
-        Company saved = companyRepository.save(company);
-
-        String token = jwtUtil.generateToken(saved.getEmail(), saved.getRole(), saved.getId());
-        return new AuthResponse(token, saved.getEmail(), saved.getRole(), saved.getId(),
-                "Inscription Company via LinkedIn réussie");
     }
 }

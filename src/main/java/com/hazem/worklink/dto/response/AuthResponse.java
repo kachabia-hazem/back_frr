@@ -23,7 +23,7 @@ public class AuthResponse {
 
     private Boolean needsRegistration;
 
-    private LinkedInProfileResponse linkedInProfile;
+    private OAuthProfileResponse oauthProfile;
 
     // Existing 5-arg constructor for backwards compatibility
     public AuthResponse(String token, String email, Role role, String id, String message) {
@@ -33,6 +33,6 @@ public class AuthResponse {
         this.id = id;
         this.message = message;
         this.needsRegistration = false;
-        this.linkedInProfile = null;
+        this.oauthProfile = null;
     }
 }
