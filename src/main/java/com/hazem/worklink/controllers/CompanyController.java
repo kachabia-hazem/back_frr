@@ -14,7 +14,14 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/company")
 @RequiredArgsConstructor
-public class CompanyController {
+
+
+
+
+
+
+public class
+CompanyController {
 
     private final CompanyService companyService;
 

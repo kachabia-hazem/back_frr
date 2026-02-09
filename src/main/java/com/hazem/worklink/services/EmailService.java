@@ -57,10 +57,10 @@ public class EmailService {
 
     public boolean verifyCode(String email, String code) {
         Optional<VerificationCode> vc = verificationCodeRepository.findByEmailAndCode(email, code);
-        if (vc.isPresent()) {
-            verificationCodeRepository.deleteByEmail(email);
-            return true;
-        }
-        return false;
+        return vc.isPresent();
+    }
+
+    public void deleteCode(String email) {
+        verificationCodeRepository.deleteByEmail(email);
     }
 }

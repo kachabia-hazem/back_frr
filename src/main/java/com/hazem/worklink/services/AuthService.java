@@ -241,6 +241,7 @@ public class AuthService {
         if (freelancer.isPresent()) {
             freelancer.get().setPassword(encodedPassword);
             freelancerRepository.save(freelancer.get());
+            emailService.deleteCode(email);
             return;
         }
 
@@ -249,6 +250,7 @@ public class AuthService {
         if (company.isPresent()) {
             company.get().setPassword(encodedPassword);
             companyRepository.save(company.get());
+            emailService.deleteCode(email);
             return;
         }
 
@@ -257,6 +259,7 @@ public class AuthService {
         if (admin.isPresent()) {
             admin.get().setPassword(encodedPassword);
             adminRepository.save(admin.get());
+            emailService.deleteCode(email);
             return;
         }
 
