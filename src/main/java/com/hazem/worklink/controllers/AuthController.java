@@ -57,14 +57,14 @@ public class AuthController {
     }
 
     @PostMapping("/email/verify-code")
-    public ResponseEntity<Map<String, String>> verifyCode(
+    public ResponseEntity<Map<String, Object>> verifyCode(
             @Valid @RequestBody VerifyCodeRequest request) {
         boolean verified = emailService.verifyCode(request.getEmail(), request.getCode());
         if (!verified) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("message", "Code de vérification invalide ou expiré"));
+                    .body(Map.of("verified", false, "message", "Code de vérification invalide ou expiré"));
         }
-        return ResponseEntity.ok(Map.of("message", "Code vérifié avec succès"));
+        return ResponseEntity.ok(Map.of("verified", true, "message", "Code vérifié avec succès"));
     }
 
     @PostMapping("/reset-password")

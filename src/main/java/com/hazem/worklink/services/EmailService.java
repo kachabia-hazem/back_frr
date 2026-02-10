@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -39,20 +40,21 @@ public class EmailService {
         vc.setCreatedAt(Instant.now());
         verificationCodeRepository.save(vc);
 
-        // Send email
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail);
-        message.setTo(email);
-        message.setSubject("WorkLink - Email Verification Code");
-        message.setText("Your verification code is: " + code + "\n\nThis code expires in 5 minutes.");
+        // Send email asynchronously (non-blocking)
+        CompletableFuture.runAsync(() -> {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(email);
+            message.setSubject("WorkLink - Email Verification Code");
+            message.setText("Your verification code is: " + code + "\n\nThis code expires in 5 minutes.");
 
-        try {
-            mailSender.send(message);
-            log.info("Verification code sent to {}", email);
-        } catch (Exception e) {
-            log.error("Failed to send verification email to {}: {}", email, e.getMessage());
-            throw new RuntimeException("Failed to send verification email. Please try again.");
-        }
+            try {
+                mailSender.send(message);
+                log.info("Verification code sent to {}", email);
+            } catch (Exception e) {
+                log.error("Failed to send verification email to {}: {}", email, e.getMessage());
+            }
+        });
     }
 
     public boolean verifyCode(String email, String code) {
