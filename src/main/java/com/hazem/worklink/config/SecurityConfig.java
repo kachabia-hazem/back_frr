@@ -50,6 +50,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/company/public/**").permitAll()
                         .requestMatchers("/api/missions/public/**").permitAll()
                         .requestMatchers("/api/missions/**").hasAuthority("COMPANY")
+                        .requestMatchers("/api/applications/**").hasAuthority("FREELANCER")
                         .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
                         .requestMatchers("/api/freelancer/**").hasAuthority("FREELANCER")
                         .requestMatchers("/api/company/**").hasAuthority("COMPANY")

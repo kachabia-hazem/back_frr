@@ -11,6 +11,7 @@ import com.hazem.worklink.repositories.MissionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +65,17 @@ public class MissionService {
     }
 
     public List<MissionResponse> getOpenMissionsWithCompany() {
-        List<Mission> missions = missionRepository.findByStatus(MissionStatus.OPEN);
+        List<Mission> missions = new java.util.ArrayList<>(missionRepository.findByStatus(MissionStatus.OPEN));
+
+        // Include CLOSED missions whose deadline passed less than 1 hour ago
+        LocalDate oneHourAgoDate = LocalDateTime.now().minusHours(1).toLocalDate();
+        List<Mission> closedMissions = missionRepository.findByStatus(MissionStatus.CLOSED);
+        for (Mission m : closedMissions) {
+            if (m.getApplicationDeadline() != null && !m.getApplicationDeadline().isBefore(oneHourAgoDate)) {
+                missions.add(m);
+            }
+        }
+
         return enrichMissionsWithCompany(missions);
     }
 

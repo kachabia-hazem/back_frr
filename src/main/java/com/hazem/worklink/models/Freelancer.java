@@ -47,6 +47,14 @@ public class Freelancer extends User {
 
     private String location;
 
+    private String country;
+
+    private String postalCode;
+
+    private String city;
+
+    private String postalAddress;
+
     // Informations supplémentaires optionnelles
     private String bio;
 
