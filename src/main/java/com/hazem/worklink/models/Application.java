@@ -40,6 +40,8 @@ public class Application {
     private String salaryExpectations;
     private String currentSalaryAndNotice;
     private String previouslyWorked;
+    private String previousWorkDate;
+    private String previousWorkExperience;
 
     private ApplicationStatus status;
     private LocalDateTime submittedAt;

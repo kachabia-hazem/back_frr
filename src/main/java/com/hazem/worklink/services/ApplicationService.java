@@ -57,6 +57,8 @@ public class ApplicationService {
         application.setSalaryExpectations(request.getSalaryExpectations());
         application.setCurrentSalaryAndNotice(request.getCurrentSalaryAndNotice());
         application.setPreviouslyWorked(request.getPreviouslyWorked());
+        application.setPreviousWorkDate(request.getPreviousWorkDate());
+        application.setPreviousWorkExperience(request.getPreviousWorkExperience());
         application.setStatus(ApplicationStatus.PENDING);
         application.setSubmittedAt(LocalDateTime.now());
         application.setUpdatedAt(LocalDateTime.now());

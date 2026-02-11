@@ -39,4 +39,7 @@ public class CreateApplicationRequest {
 
     @NotBlank(message = "Previously worked answer is required")
     private String previouslyWorked;
+
+    private String previousWorkDate;
+    private String previousWorkExperience;
 }

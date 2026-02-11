@@ -36,6 +36,8 @@ public class ApplicationResponse {
     private String salaryExpectations;
     private String currentSalaryAndNotice;
     private String previouslyWorked;
+    private String previousWorkDate;
+    private String previousWorkExperience;
 
     private ApplicationStatus status;
     private LocalDateTime submittedAt;
@@ -62,6 +64,8 @@ public class ApplicationResponse {
                 .salaryExpectations(application.getSalaryExpectations())
                 .currentSalaryAndNotice(application.getCurrentSalaryAndNotice())
                 .previouslyWorked(application.getPreviouslyWorked())
+                .previousWorkDate(application.getPreviousWorkDate())
+                .previousWorkExperience(application.getPreviousWorkExperience())
                 .status(application.getStatus())
                 .submittedAt(application.getSubmittedAt())
                 .updatedAt(application.getUpdatedAt());
