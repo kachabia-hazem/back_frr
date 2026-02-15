@@ -48,6 +48,8 @@ public class CreateMissionRequest {
 
     private String missionBusinessSector;
 
+    private String speciality;
+
     @NotNull(message = "TJM is required")
     @Min(value = 0, message = "TJM must be 0 or more")
     private Double tjm;

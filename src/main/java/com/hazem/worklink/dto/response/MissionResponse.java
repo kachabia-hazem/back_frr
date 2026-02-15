@@ -33,6 +33,7 @@ public class MissionResponse {
     private Double tjm;
     private LocalDate applicationDeadline;
     private String missionBusinessSector;
+    private String speciality;
     private MissionStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -61,6 +62,7 @@ public class MissionResponse {
                 .tjm(mission.getTjm())
                 .applicationDeadline(mission.getApplicationDeadline())
                 .missionBusinessSector(mission.getMissionBusinessSector())
+                .speciality(mission.getSpeciality())
                 .status(mission.getStatus())
                 .createdAt(mission.getCreatedAt())
                 .updatedAt(mission.getUpdatedAt());

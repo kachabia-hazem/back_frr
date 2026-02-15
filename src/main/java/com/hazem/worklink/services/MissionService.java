@@ -42,6 +42,7 @@ public class MissionService {
         mission.setTechnicalEnvironment(request.getTechnicalEnvironment());
         mission.setApplicationDeadline(request.getApplicationDeadline());
         mission.setMissionBusinessSector(request.getMissionBusinessSector());
+        mission.setSpeciality(request.getSpeciality());
         mission.setTjm(request.getTjm());
         mission.setStatus(MissionStatus.OPEN);
         mission.setCreatedAt(LocalDateTime.now());
@@ -111,6 +112,7 @@ public class MissionService {
         mission.setTechnicalEnvironment(request.getTechnicalEnvironment());
         mission.setApplicationDeadline(request.getApplicationDeadline());
         mission.setMissionBusinessSector(request.getMissionBusinessSector());
+        mission.setSpeciality(request.getSpeciality());
         mission.setTjm(request.getTjm());
         mission.setUpdatedAt(LocalDateTime.now());
         return missionRepository.save(mission);

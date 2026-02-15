@@ -42,6 +42,7 @@ public class Mission {
     // Additional
     private LocalDate applicationDeadline;
     private String missionBusinessSector;
+    private String speciality;
 
     // Budget
     private Double tjm;

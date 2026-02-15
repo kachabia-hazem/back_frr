@@ -71,4 +71,16 @@ public class FreelancerController {
         Freelancer freelancer = freelancerService.updateCvUrl(email, cvUrl);
         return ResponseEntity.ok(freelancer);
     }
+
+    @PutMapping("/me/card-customization")
+    public ResponseEntity<Freelancer> updateCardCustomization(
+            Authentication authentication,
+            @RequestBody java.util.Map<String, Object> request) {
+        String email = authentication.getName();
+        String cardBackground = (String) request.get("cardBackground");
+        @SuppressWarnings("unchecked")
+        java.util.List<String> portfolioImages = (java.util.List<String>) request.get("portfolioImages");
+        Freelancer freelancer = freelancerService.updateCardCustomization(email, cardBackground, portfolioImages);
+        return ResponseEntity.ok(freelancer);
+    }
 }

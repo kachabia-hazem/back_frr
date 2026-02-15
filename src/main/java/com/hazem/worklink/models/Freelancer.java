@@ -70,6 +70,11 @@ public class Freelancer extends User {
 
     private Integer completedProjects;
 
+    // Card customization
+    private String cardBackground;
+
+    private List<String> portfolioImages = new ArrayList<>();
+
     // CV Data
     private List<Education> education = new ArrayList<>();
 

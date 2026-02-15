@@ -25,6 +25,7 @@ public class FileStorageService {
     private Path profilePicturesPath;
     private Path cvsPath;
     private Path companyLogosPath;
+    private Path portfolioImagesPath;
 
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     private static final long MAX_CV_SIZE = 10 * 1024 * 1024; // 10MB for CVs
@@ -39,10 +40,12 @@ public class FileStorageService {
             profilePicturesPath = Paths.get(uploadDir, "profile-pictures").toAbsolutePath().normalize();
             cvsPath = Paths.get(uploadDir, "cvs").toAbsolutePath().normalize();
             companyLogosPath = Paths.get(uploadDir, "company-logos").toAbsolutePath().normalize();
+            portfolioImagesPath = Paths.get(uploadDir, "portfolio-images").toAbsolutePath().normalize();
             Files.createDirectories(certificatesPath);
             Files.createDirectories(profilePicturesPath);
             Files.createDirectories(cvsPath);
             Files.createDirectories(companyLogosPath);
+            Files.createDirectories(portfolioImagesPath);
         } catch (IOException e) {
             throw new RuntimeException("Could not create upload directories", e);
         }
@@ -126,6 +129,26 @@ public class FileStorageService {
 
     public Path getCompanyLogoPath(String fileName) {
         return companyLogosPath.resolve(fileName).normalize();
+    }
+
+    public String storePortfolioImage(MultipartFile file) {
+        validateImageFile(file);
+
+        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
+        String fileExtension = getFileExtension(originalFileName);
+        String newFileName = UUID.randomUUID().toString() + "." + fileExtension;
+
+        try {
+            Path targetLocation = portfolioImagesPath.resolve(newFileName);
+            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            return "/api/files/portfolio-images/" + newFileName;
+        } catch (IOException e) {
+            throw new RuntimeException("Could not store portfolio image " + originalFileName, e);
+        }
+    }
+
+    public Path getPortfolioImagePath(String fileName) {
+        return portfolioImagesPath.resolve(fileName).normalize();
     }
 
     private void validateFile(MultipartFile file) {

@@ -66,6 +66,30 @@ public class ApplicationService {
         return applicationRepository.save(application);
     }
 
+    public boolean hasApplied(String freelancerEmail, String missionId) {
+        Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found with email: " + freelancerEmail));
+        return applicationRepository.findByFreelancerIdAndMissionId(freelancer.getId(), missionId)
+                .filter(app -> app.getStatus() != ApplicationStatus.WITHDRAWN)
+                .isPresent();
+    }
+
+    public void withdrawApplication(String freelancerEmail, String missionId) {
+        Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found with email: " + freelancerEmail));
+
+        Application application = applicationRepository.findByFreelancerIdAndMissionId(freelancer.getId(), missionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found for this mission"));
+
+        if (application.getStatus() == ApplicationStatus.ACCEPTED) {
+            throw new RuntimeException("Cannot withdraw an accepted application");
+        }
+
+        application.setStatus(ApplicationStatus.WITHDRAWN);
+        application.setUpdatedAt(LocalDateTime.now());
+        applicationRepository.save(application);
+    }
+
     public List<ApplicationResponse> getMyApplications(String freelancerEmail) {
         Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found with email: " + freelancerEmail));

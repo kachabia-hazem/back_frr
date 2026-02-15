@@ -115,4 +115,15 @@ public class FreelancerService {
         freelancer.setCvUrl(cvUrl);
         return freelancerRepository.save(freelancer);
     }
+
+    public Freelancer updateCardCustomization(String email, String cardBackground, List<String> portfolioImages) {
+        Freelancer freelancer = getFreelancerByEmail(email);
+        if (cardBackground != null) {
+            freelancer.setCardBackground(cardBackground);
+        }
+        if (portfolioImages != null) {
+            freelancer.setPortfolioImages(portfolioImages);
+        }
+        return freelancerRepository.save(freelancer);
+    }
 }

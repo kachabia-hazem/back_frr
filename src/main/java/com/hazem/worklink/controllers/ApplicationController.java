@@ -33,4 +33,21 @@ public class ApplicationController {
         String email = authentication.getName();
         return ResponseEntity.ok(applicationService.getMyApplications(email));
     }
+
+    @GetMapping("/check/{missionId}")
+    public ResponseEntity<Boolean> hasApplied(
+            Authentication authentication,
+            @PathVariable String missionId) {
+        String email = authentication.getName();
+        return ResponseEntity.ok(applicationService.hasApplied(email, missionId));
+    }
+
+    @DeleteMapping("/withdraw/{missionId}")
+    public ResponseEntity<Void> withdrawApplication(
+            Authentication authentication,
+            @PathVariable String missionId) {
+        String email = authentication.getName();
+        applicationService.withdrawApplication(email, missionId);
+        return ResponseEntity.noContent().build();
+    }
 }
