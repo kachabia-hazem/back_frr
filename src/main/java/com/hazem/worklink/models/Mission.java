@@ -51,3 +51,4 @@ public class Mission {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
+
