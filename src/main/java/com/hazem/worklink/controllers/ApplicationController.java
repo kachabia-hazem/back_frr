@@ -42,6 +42,12 @@ public class ApplicationController {
         return ResponseEntity.ok(applicationService.hasApplied(email, missionId));
     }
 
+    @GetMapping("/company")
+    public ResponseEntity<List<ApplicationResponse>> getCompanyApplications(Authentication authentication) {
+        String email = authentication.getName();
+        return ResponseEntity.ok(applicationService.getCompanyApplications(email));
+    }
+
     @DeleteMapping("/withdraw/{missionId}")
     public ResponseEntity<Void> withdrawApplication(
             Authentication authentication,
@@ -49,5 +55,22 @@ public class ApplicationController {
         String email = authentication.getName();
         applicationService.withdrawApplication(email, missionId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/mission/{missionId}")
+    public ResponseEntity<List<ApplicationResponse>> getMissionApplications(
+            Authentication authentication,
+            @PathVariable String missionId) {
+        String email = authentication.getName();
+        return ResponseEntity.ok(applicationService.getMissionApplications(email, missionId));
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ApplicationResponse> updateApplicationStatus(
+            Authentication authentication,
+            @PathVariable String id,
+            @RequestParam String status) {
+        String email = authentication.getName();
+        return ResponseEntity.ok(applicationService.updateApplicationStatus(email, id, status));
     }
 }

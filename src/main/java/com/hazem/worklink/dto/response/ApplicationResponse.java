@@ -46,8 +46,18 @@ public class ApplicationResponse {
     // Enriched fields
     private String missionTitle;
     private String companyName;
+    private String companyLogo;
+
+    // Freelancer enriched fields
+    private java.util.List<String> freelancerSkills;
+    private String freelancerProfilePicture;
+    private String freelancerCurrentPosition;
 
     public static ApplicationResponse from(Application application, Mission mission, Company company) {
+        return fromWithFreelancer(application, mission, company, null);
+    }
+
+    public static ApplicationResponse fromWithFreelancer(Application application, Mission mission, Company company, com.hazem.worklink.models.Freelancer freelancer) {
         ApplicationResponseBuilder builder = ApplicationResponse.builder()
                 .id(application.getId())
                 .freelancerId(application.getFreelancerId())
@@ -75,6 +85,12 @@ public class ApplicationResponse {
         }
         if (company != null) {
             builder.companyName(company.getCompanyName());
+            builder.companyLogo(company.getCompanyLogo());
+        }
+        if (freelancer != null) {
+            builder.freelancerSkills(freelancer.getSkills());
+            builder.freelancerProfilePicture(freelancer.getProfilePicture());
+            builder.freelancerCurrentPosition(freelancer.getCurrentPosition());
         }
 
         return builder.build();

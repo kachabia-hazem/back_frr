@@ -129,4 +129,85 @@ public class ApplicationService {
                 })
                 .collect(Collectors.toList());
     }
+
+    public List<ApplicationResponse> getCompanyApplications(String companyEmail) {
+        Company company = companyRepository.findByEmail(companyEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found with email: " + companyEmail));
+
+        List<Mission> missions = missionRepository.findByCompanyId(company.getId());
+
+        List<Application> applications = missions.stream()
+                .flatMap(mission -> applicationRepository.findByMissionId(mission.getId()).stream())
+                .collect(Collectors.toList());
+
+        Map<String, Mission> missionMap = missions.stream()
+                .collect(Collectors.toMap(Mission::getId, m -> m));
+
+        List<String> freelancerIds = applications.stream()
+                .map(Application::getFreelancerId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<String, Freelancer> freelancerMap = freelancerIds.isEmpty()
+                ? Map.of()
+                : freelancerRepository.findAllById(freelancerIds).stream()
+                    .collect(Collectors.toMap(Freelancer::getId, f -> f));
+
+        return applications.stream()
+                .map(app -> ApplicationResponse.fromWithFreelancer(
+                        app, missionMap.get(app.getMissionId()), company, freelancerMap.get(app.getFreelancerId())))
+                .collect(Collectors.toList());
+    }
+
+    public List<ApplicationResponse> getMissionApplications(String companyEmail, String missionId) {
+        Company company = companyRepository.findByEmail(companyEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found with email: " + companyEmail));
+
+        Mission mission = missionRepository.findById(missionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Mission not found with id: " + missionId));
+
+        if (!mission.getCompanyId().equals(company.getId())) {
+            throw new RuntimeException("Unauthorized: mission does not belong to this company");
+        }
+
+        List<Application> applications = applicationRepository.findByMissionId(missionId);
+
+        List<String> freelancerIds = applications.stream()
+                .map(Application::getFreelancerId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<String, Freelancer> freelancerMap = freelancerIds.isEmpty()
+                ? Map.of()
+                : freelancerRepository.findAllById(freelancerIds).stream()
+                    .collect(Collectors.toMap(Freelancer::getId, f -> f));
+
+        return applications.stream()
+                .map(app -> ApplicationResponse.fromWithFreelancer(
+                        app, mission, company, freelancerMap.get(app.getFreelancerId())))
+                .collect(Collectors.toList());
+    }
+
+    public ApplicationResponse updateApplicationStatus(String companyEmail, String applicationId, String status) {
+        Company company = companyRepository.findByEmail(companyEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found with email: " + companyEmail));
+
+        Application application = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + applicationId));
+
+        Mission mission = missionRepository.findById(application.getMissionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Mission not found"));
+
+        if (!mission.getCompanyId().equals(company.getId())) {
+            throw new RuntimeException("Unauthorized: application does not belong to this company");
+        }
+
+        com.hazem.worklink.models.enums.ApplicationStatus newStatus =
+                com.hazem.worklink.models.enums.ApplicationStatus.valueOf(status.toUpperCase());
+        application.setStatus(newStatus);
+        application.setUpdatedAt(LocalDateTime.now());
+        applicationRepository.save(application);
+
+        return ApplicationResponse.from(application, mission, company);
+    }
 }
