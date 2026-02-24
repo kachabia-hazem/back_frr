@@ -51,11 +51,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
     }
 
+    // Gestion : Erreurs métier (règles applicatives)
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<Map<String, String>> handleRuntimeException(RuntimeException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
     // Gestion : Toutes les autres exceptions
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGenericException(Exception ex) {
         Map<String, String> error = new HashMap<>();
-        error.put("error", "Une erreur s'est produite: " + ex.getMessage());
+        error.put("message", "Une erreur s'est produite: " + ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }

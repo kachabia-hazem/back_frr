@@ -39,7 +39,12 @@ public class ApplicationService {
         // Check if freelancer already applied to this mission
         applicationRepository.findByFreelancerIdAndMissionId(freelancer.getId(), mission.getId())
                 .ifPresent(existing -> {
-                    throw new RuntimeException("You have already applied to this mission");
+                    // If the previous application was withdrawn (old data), delete it to allow re-applying
+                    if (existing.getStatus() == ApplicationStatus.WITHDRAWN) {
+                        applicationRepository.delete(existing);
+                    } else {
+                        throw new RuntimeException("You have already applied to this mission");
+                    }
                 });
 
         Application application = new Application();
@@ -85,9 +90,9 @@ public class ApplicationService {
             throw new RuntimeException("Cannot withdraw an accepted application");
         }
 
-        application.setStatus(ApplicationStatus.WITHDRAWN);
-        application.setUpdatedAt(LocalDateTime.now());
-        applicationRepository.save(application);
+        // Delete the application completely so it disappears from company history
+        // and the freelancer can re-apply later
+        applicationRepository.delete(application);
     }
 
     public List<ApplicationResponse> getMyApplications(String freelancerEmail) {
@@ -138,6 +143,7 @@ public class ApplicationService {
 
         List<Application> applications = missions.stream()
                 .flatMap(mission -> applicationRepository.findByMissionId(mission.getId()).stream())
+                .filter(app -> app.getStatus() != ApplicationStatus.WITHDRAWN)
                 .collect(Collectors.toList());
 
         Map<String, Mission> missionMap = missions.stream()
@@ -170,7 +176,10 @@ public class ApplicationService {
             throw new RuntimeException("Unauthorized: mission does not belong to this company");
         }
 
-        List<Application> applications = applicationRepository.findByMissionId(missionId);
+        List<Application> applications = applicationRepository.findByMissionId(missionId)
+                .stream()
+                .filter(app -> app.getStatus() != ApplicationStatus.WITHDRAWN)
+                .collect(Collectors.toList());
 
         List<String> freelancerIds = applications.stream()
                 .map(Application::getFreelancerId)
