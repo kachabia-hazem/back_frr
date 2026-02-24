@@ -27,6 +27,7 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
+    private final NotificationService notificationService;
 
     // Register Freelancer
     public AuthResponse registerFreelancer(RegisterFreelancerRequest request) {
@@ -57,6 +58,9 @@ public class AuthService {
         freelancer.setRating(0.0);
 
         Freelancer savedFreelancer = freelancerRepository.save(freelancer);
+
+        // Send welcome notification
+        notificationService.sendWelcomeNotification(savedFreelancer.getId());
 
         // Générer le token
         String token = jwtUtil.generateToken(

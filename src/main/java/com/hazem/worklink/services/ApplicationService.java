@@ -28,6 +28,7 @@ public class ApplicationService {
     private final FreelancerRepository freelancerRepository;
     private final MissionRepository missionRepository;
     private final CompanyRepository companyRepository;
+    private final NotificationService notificationService;
 
     public Application submitApplication(String freelancerEmail, CreateApplicationRequest request) {
         Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
@@ -68,7 +69,15 @@ public class ApplicationService {
         application.setSubmittedAt(LocalDateTime.now());
         application.setUpdatedAt(LocalDateTime.now());
 
-        return applicationRepository.save(application);
+        Application savedApplication = applicationRepository.save(application);
+
+        // Notify freelancer: application submitted
+        Company company = companyRepository.findById(mission.getCompanyId()).orElse(null);
+        String companyName = company != null ? company.getCompanyName() : "the company";
+        notificationService.sendApplicationSubmittedNotification(
+                freelancer.getId(), mission.getJobTitle(), companyName);
+
+        return savedApplication;
     }
 
     public boolean hasApplied(String freelancerEmail, String missionId) {
@@ -90,9 +99,16 @@ public class ApplicationService {
             throw new RuntimeException("Cannot withdraw an accepted application");
         }
 
+        // Fetch mission title for notification before deleting
+        Mission mission = missionRepository.findById(application.getMissionId()).orElse(null);
+        String missionTitle = mission != null ? mission.getJobTitle() : "the mission";
+
         // Delete the application completely so it disappears from company history
         // and the freelancer can re-apply later
         applicationRepository.delete(application);
+
+        // Notify freelancer: application withdrawn
+        notificationService.sendApplicationWithdrawnNotification(freelancer.getId(), missionTitle);
     }
 
     public List<ApplicationResponse> getMyApplications(String freelancerEmail) {
@@ -216,6 +232,15 @@ public class ApplicationService {
         application.setStatus(newStatus);
         application.setUpdatedAt(LocalDateTime.now());
         applicationRepository.save(application);
+
+        // Notify freelancer about status change
+        if (newStatus == ApplicationStatus.ACCEPTED) {
+            notificationService.sendApplicationAcceptedNotification(
+                    application.getFreelancerId(), mission.getJobTitle(), company.getCompanyName(), company.getId());
+        } else if (newStatus == ApplicationStatus.REJECTED) {
+            notificationService.sendApplicationRejectedNotification(
+                    application.getFreelancerId(), mission.getJobTitle(), company.getCompanyName(), company.getId());
+        }
 
         return ApplicationResponse.from(application, mission, company);
     }

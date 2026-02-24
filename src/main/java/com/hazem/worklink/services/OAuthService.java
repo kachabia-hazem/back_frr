@@ -41,6 +41,7 @@ public class OAuthService {
     private final AdminRepository adminRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final NotificationService notificationService;
 
     @Value("${oauth.google.client-id}")
     private String googleClientId;
@@ -257,6 +258,9 @@ public class OAuthService {
         freelancer.setRating(0.0);
 
         Freelancer saved = freelancerRepository.save(freelancer);
+
+        // Send welcome notification for OAuth-registered freelancers
+        notificationService.sendWelcomeNotification(saved.getId());
 
         String token = jwtUtil.generateToken(saved.getEmail(), saved.getRole(), saved.getId());
         return new AuthResponse(token, saved.getEmail(), saved.getRole(), saved.getId(),
