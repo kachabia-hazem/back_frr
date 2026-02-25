@@ -57,6 +57,10 @@ public class MissionService {
 
         Mission savedMission = missionRepository.save(mission);
 
+        // Notify the company: mission published successfully
+        notificationService.sendMissionPublishedNotification(
+                company.getId(), savedMission.getJobTitle(), savedMission.getId());
+
         // Notify matching freelancers
         notifyMatchingFreelancers(savedMission, company);
 

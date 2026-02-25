@@ -112,6 +112,9 @@ public class AuthService {
 
         Company savedCompany = companyRepository.save(company);
 
+        // Send welcome notification
+        notificationService.sendCompanyWelcomeNotification(savedCompany.getId());
+
         // Générer le token
         String token = jwtUtil.generateToken(
                 savedCompany.getEmail(),

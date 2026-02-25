@@ -77,6 +77,14 @@ public class ApplicationService {
         notificationService.sendApplicationSubmittedNotification(
                 freelancer.getId(), mission.getJobTitle(), companyName);
 
+        // Notify company: new application received
+        if (company != null) {
+            String freelancerName = (freelancer.getFirstName() != null ? freelancer.getFirstName() : "")
+                    + " " + (freelancer.getLastName() != null ? freelancer.getLastName() : "");
+            notificationService.sendApplicationReceivedNotification(
+                    company.getId(), mission.getJobTitle(), freelancerName.trim());
+        }
+
         return savedApplication;
     }
 
