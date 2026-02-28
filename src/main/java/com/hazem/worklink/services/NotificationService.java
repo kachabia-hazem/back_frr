@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,6 +25,20 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final FreelancerRepository freelancerRepository;
     private final CompanyRepository companyRepository;
+    private final N8nWebhookService n8nWebhookService;
+
+    private static final Set<NotificationType> EMAIL_NOTIFICATION_TYPES = Set.of(
+            // Freelancer
+            NotificationType.WELCOME,
+            NotificationType.APPLICATION_ACCEPTED,
+            NotificationType.APPLICATION_REJECTED,
+            NotificationType.NEW_MISSION_MATCH,
+            NotificationType.MISSION_DEADLINE_SOON,
+            // Company
+            NotificationType.COMPANY_WELCOME,
+            NotificationType.APPLICATION_RECEIVED,
+            NotificationType.PENDING_APPLICATIONS_REMINDER
+    );
 
     // ─── Create helpers ────────────────────────────────────────────────────────
 
@@ -39,7 +54,11 @@ public class NotificationService {
         n.setRead(false);
         n.setCreatedAt(LocalDateTime.now());
         n.setActionUrl(actionUrl);
-        return notificationRepository.save(n);
+        Notification saved = notificationRepository.save(n);
+        if (EMAIL_NOTIFICATION_TYPES.contains(type)) {
+            n8nWebhookService.sendEmailNotification(saved);
+        }
+        return saved;
     }
 
     // ─── Automatic notification triggers ───────────────────────────────────────
