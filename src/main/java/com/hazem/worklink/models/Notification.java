@@ -32,7 +32,7 @@ public class Notification {
 
     private String senderId;
 
-    private boolean isRead;
+        private boolean isRead;
 
     private LocalDateTime createdAt;
 
