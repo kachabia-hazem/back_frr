@@ -116,6 +116,21 @@ public class FreelancerService {
         return freelancerRepository.save(freelancer);
     }
 
+    public void incrementProfileViews(String freelancerId) {
+        Freelancer freelancer = getFreelancerById(freelancerId);
+        freelancer.setProfileViews(freelancer.getProfileViews() + 1);
+        freelancerRepository.save(freelancer);
+    }
+
+    public void incrementSearchAppearances(List<String> ids) {
+        for (String id : ids) {
+            freelancerRepository.findById(id).ifPresent(freelancer -> {
+                freelancer.setSearchAppearances(freelancer.getSearchAppearances() + 1);
+                freelancerRepository.save(freelancer);
+            });
+        }
+    }
+
     public Freelancer updateCardCustomization(String email, String cardBackground, List<String> portfolioImages) {
         Freelancer freelancer = getFreelancerByEmail(email);
         if (cardBackground != null) {

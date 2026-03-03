@@ -22,6 +22,18 @@ public class FreelancerController {
         return ResponseEntity.ok(freelancer);
     }
 
+    @PostMapping("/public/{id}/view")
+    public ResponseEntity<Void> recordProfileView(@PathVariable String id) {
+        freelancerService.incrementProfileViews(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/public/batch-appearances")
+    public ResponseEntity<Void> recordSearchAppearances(@RequestBody java.util.List<String> ids) {
+        freelancerService.incrementSearchAppearances(ids);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/public/all")
     public ResponseEntity<java.util.List<Freelancer>> getAllFreelancers() {
         return ResponseEntity.ok(freelancerService.getAllFreelancers());

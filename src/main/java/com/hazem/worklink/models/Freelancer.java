@@ -75,6 +75,11 @@ public class Freelancer extends User {
 
     private List<String> portfolioImages = new ArrayList<>();
 
+    // Visibility
+    private int profileViews = 0;
+
+    private int searchAppearances = 0;
+
     // CV Data
     private List<Education> education = new ArrayList<>();
 
