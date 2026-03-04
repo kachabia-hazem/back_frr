@@ -34,6 +34,9 @@ public class NotificationService {
             NotificationType.APPLICATION_REJECTED,
             NotificationType.NEW_MISSION_MATCH,
             NotificationType.MISSION_DEADLINE_SOON,
+            NotificationType.CONTRACT_GENERATED,
+            NotificationType.CONTRACT_SIGNED,
+            NotificationType.CONTRACT_SIGNATURE_REMINDER,
             // Company
             NotificationType.COMPANY_WELCOME,
             NotificationType.APPLICATION_RECEIVED,
@@ -223,6 +226,75 @@ public class NotificationService {
                 "Pending Applications Awaiting Review",
                 message,
                 "WorkLink", null, "/company-applications");
+    }
+
+    // ─── Contract notification triggers ─────────────────────────────────────────
+
+    /** Contract 1 – Sent to freelancer when a contract is generated (app accepted) */
+    public void sendContractGeneratedNotification(String freelancerId, String missionTitle, String companyName, String contractId) {
+        String message = String.format(
+                "A contract has been generated for the mission \"%s\" by %s.\n" +
+                "Please review the contract terms and sign it electronically in your Contracts section.\n" +
+                "Your mission begins once the contract is signed.",
+                missionTitle, companyName);
+
+        build(freelancerId, NotificationType.CONTRACT_GENERATED,
+                "Contract Ready for Signature \uD83D\uDCDD",
+                message,
+                companyName, null, "/freelancer-contracts");
+    }
+
+    /** Contract 2 – Sent to company when contract is generated */
+    public void sendContractCreatedToCompanyNotification(String companyId, String missionTitle, String freelancerName) {
+        String message = String.format(
+                "A contract has been sent to %s for the mission \"%s\".\n" +
+                "You will be notified once the freelancer signs the contract.",
+                freelancerName, missionTitle);
+
+        build(companyId, NotificationType.CONTRACT_GENERATED,
+                "Contract Sent to Freelancer",
+                message,
+                "WorkLink", null, "/company-contracts");
+    }
+
+    /** Contract 3 – Sent to company when freelancer signs the contract */
+    public void sendContractSignedNotification(String companyId, String missionTitle, String freelancerName, String contractId, String signedPdfUrl) {
+        String message = String.format(
+                "%s has signed the contract for the mission \"%s\".\n" +
+                "The mission is now officially started. You can view and download the signed contract in your Contracts section.",
+                freelancerName, missionTitle);
+
+        build(companyId, NotificationType.CONTRACT_SIGNED,
+                "Contract Signed \u2705",
+                message,
+                freelancerName, null, "/company-contracts");
+    }
+
+    /** Contract 4 – Sent to freelancer confirming their signature and sending the signed PDF */
+    public void sendContractSignedToFreelancerNotification(String freelancerId, String missionTitle, String signedPdfUrl) {
+        String message = String.format(
+                "You have successfully signed the contract for the mission \"%s\".\n" +
+                "Your mission has officially started. The signed contract is available for download in your Contracts section.",
+                missionTitle);
+
+        build(freelancerId, NotificationType.CONTRACT_SIGNED,
+                "Contract Signed Successfully \u2705",
+                message,
+                "WorkLink", null, "/freelancer-contracts");
+    }
+
+    /** Contract 5 – Reminder sent to freelancer 3 days after contract creation if still unsigned */
+    public void sendContractSignatureReminderNotification(String freelancerId, String missionTitle, String companyName) {
+        String message = String.format(
+                "Reminder: You have a pending contract for the mission \"%s\" by %s that is still awaiting your signature.\n" +
+                "Please sign it as soon as possible to officially start the mission.\n" +
+                "You can review and sign the contract in your Contracts section.",
+                missionTitle, companyName);
+
+        build(freelancerId, NotificationType.CONTRACT_SIGNATURE_REMINDER,
+                "Contract Signature Reminder \u23F0",
+                message,
+                "WorkLink", null, "/freelancer-contracts");
     }
 
     /** Company Case 5 – Sent when a mission is closed */

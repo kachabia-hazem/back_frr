@@ -1,5 +1,6 @@
 package com.hazem.worklink.controllers;
 
+import com.hazem.worklink.services.ContractService;
 import com.hazem.worklink.services.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -23,6 +24,7 @@ import java.util.Map;
 public class FileUploadController {
 
     private final FileStorageService fileStorageService;
+    private final ContractService contractService;
 
     @PostMapping("/certificates")
     public ResponseEntity<Map<String, String>> uploadCertificate(@RequestParam("file") MultipartFile file) {
@@ -196,6 +198,15 @@ public class FileUploadController {
         } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    @GetMapping("/contracts/{fileName:.+}")
+    public ResponseEntity<Resource> getContractFile(@PathVariable String fileName) {
+        Resource resource = contractService.loadContractFile(fileName);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
     }
 
     @GetMapping("/company-logos/{fileName:.+}")

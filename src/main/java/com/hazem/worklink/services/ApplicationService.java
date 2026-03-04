@@ -13,6 +13,7 @@ import com.hazem.worklink.repositories.CompanyRepository;
 import com.hazem.worklink.repositories.FreelancerRepository;
 import com.hazem.worklink.repositories.MissionRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ApplicationService {
@@ -29,6 +31,7 @@ public class ApplicationService {
     private final MissionRepository missionRepository;
     private final CompanyRepository companyRepository;
     private final NotificationService notificationService;
+    private final ContractService contractService;
 
     public Application submitApplication(String freelancerEmail, CreateApplicationRequest request) {
         Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
@@ -245,6 +248,16 @@ public class ApplicationService {
         if (newStatus == ApplicationStatus.ACCEPTED) {
             notificationService.sendApplicationAcceptedNotification(
                     application.getFreelancerId(), mission.getJobTitle(), company.getCompanyName(), company.getId());
+
+            // Auto-generate contract
+            Freelancer freelancer = freelancerRepository.findById(application.getFreelancerId()).orElse(null);
+            if (freelancer != null) {
+                try {
+                    contractService.generateContract(mission, freelancer, company);
+                } catch (Exception e) {
+                    log.error("Failed to generate contract for application {}: {}", applicationId, e.getMessage());
+                }
+            }
         } else if (newStatus == ApplicationStatus.REJECTED) {
             notificationService.sendApplicationRejectedNotification(
                     application.getFreelancerId(), mission.getJobTitle(), company.getCompanyName(), company.getId());

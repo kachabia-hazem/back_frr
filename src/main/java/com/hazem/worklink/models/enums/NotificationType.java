@@ -16,5 +16,10 @@ public enum NotificationType {
     MISSION_PUBLISHED,
     APPLICATION_RECEIVED,
     PENDING_APPLICATIONS_REMINDER,
-    MISSION_CLOSED
+    MISSION_CLOSED,
+
+    // ── Contract notifications ────────────────────────────────────────
+    CONTRACT_GENERATED,            // freelancer: a contract is ready to sign
+    CONTRACT_SIGNED,               // company: freelancer signed the contract
+    CONTRACT_SIGNATURE_REMINDER    // freelancer: reminder to sign after 3 days
 }
