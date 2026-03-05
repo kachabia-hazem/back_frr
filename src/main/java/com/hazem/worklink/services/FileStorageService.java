@@ -26,12 +26,15 @@ public class FileStorageService {
     private Path cvsPath;
     private Path companyLogosPath;
     private Path portfolioImagesPath;
+    private Path deliverablesPath;
 
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     private static final long MAX_CV_SIZE = 10 * 1024 * 1024; // 10MB for CVs
+    private static final long MAX_DELIVERABLE_SIZE = 50 * 1024 * 1024; // 50MB for deliverables
     private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("pdf", "jpg", "jpeg", "png");
     private static final List<String> ALLOWED_IMAGE_EXTENSIONS = Arrays.asList("jpg", "jpeg", "png", "gif", "webp");
     private static final List<String> ALLOWED_CV_EXTENSIONS = Arrays.asList("pdf", "doc", "docx");
+    private static final List<String> ALLOWED_DELIVERABLE_EXTENSIONS = Arrays.asList("pdf", "doc", "docx", "jpg", "jpeg", "png", "zip", "rar");
 
     @PostConstruct
     public void init() {
@@ -41,11 +44,13 @@ public class FileStorageService {
             cvsPath = Paths.get(uploadDir, "cvs").toAbsolutePath().normalize();
             companyLogosPath = Paths.get(uploadDir, "company-logos").toAbsolutePath().normalize();
             portfolioImagesPath = Paths.get(uploadDir, "portfolio-images").toAbsolutePath().normalize();
+            deliverablesPath = Paths.get(uploadDir, "deliverables").toAbsolutePath().normalize();
             Files.createDirectories(certificatesPath);
             Files.createDirectories(profilePicturesPath);
             Files.createDirectories(cvsPath);
             Files.createDirectories(companyLogosPath);
             Files.createDirectories(portfolioImagesPath);
+            Files.createDirectories(deliverablesPath);
         } catch (IOException e) {
             throw new RuntimeException("Could not create upload directories", e);
         }
@@ -151,6 +156,26 @@ public class FileStorageService {
         return portfolioImagesPath.resolve(fileName).normalize();
     }
 
+    public String storeDeliverable(MultipartFile file) {
+        validateDeliverableFile(file);
+
+        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
+        String fileExtension = getFileExtension(originalFileName);
+        String newFileName = UUID.randomUUID().toString() + "." + fileExtension;
+
+        try {
+            Path targetLocation = deliverablesPath.resolve(newFileName);
+            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            return "/api/files/deliverables/" + newFileName;
+        } catch (IOException e) {
+            throw new RuntimeException("Could not store deliverable " + originalFileName, e);
+        }
+    }
+
+    public Path getDeliverablePath(String fileName) {
+        return deliverablesPath.resolve(fileName).normalize();
+    }
+
     private void validateFile(MultipartFile file) {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
@@ -203,6 +228,22 @@ public class FileStorageService {
 
         if (!ALLOWED_CV_EXTENSIONS.contains(extension)) {
             throw new IllegalArgumentException("File type not allowed. Allowed types: " + ALLOWED_CV_EXTENSIONS);
+        }
+    }
+
+    private void validateDeliverableFile(MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty");
+        }
+        if (file.getSize() > MAX_DELIVERABLE_SIZE) {
+            throw new IllegalArgumentException("File size exceeds maximum limit of 10MB");
+        }
+
+        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
+        String extension = getFileExtension(originalFileName).toLowerCase();
+
+        if (!ALLOWED_DELIVERABLE_EXTENSIONS.contains(extension)) {
+            throw new IllegalArgumentException("File type not allowed. Allowed types: " + ALLOWED_DELIVERABLE_EXTENSIONS);
         }
     }
 }

@@ -50,6 +50,7 @@ public class ContractService {
     private final FreelancerRepository freelancerRepository;
     private final CompanyRepository companyRepository;
     private final NotificationService notificationService;
+    private final ActiveMissionService activeMissionService;
 
     @Value("${file.upload-dir:uploads}")
     private String uploadDir;
@@ -194,6 +195,10 @@ public class ContractService {
         }
 
         Contract saved = contractRepository.save(contract);
+
+        // Trigger active mission creation
+        activeMissionService.createFromContract(saved);
+
         return ContractResponse.from(saved);
     }
 

@@ -209,6 +209,46 @@ public class FileUploadController {
                 .body(resource);
     }
 
+    @PostMapping("/deliverables")
+    public ResponseEntity<Map<String, String>> uploadDeliverable(@RequestParam("file") MultipartFile file) {
+        try {
+            String fileUrl = fileStorageService.storeDeliverable(file);
+            Map<String, String> response = new HashMap<>();
+            response.put("url", fileUrl);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @GetMapping("/deliverables/{fileName:.+}")
+    public ResponseEntity<Resource> getDeliverable(@PathVariable String fileName) {
+        try {
+            Path filePath = fileStorageService.getDeliverablePath(fileName);
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (resource.exists() && resource.isReadable()) {
+                String contentType = Files.probeContentType(filePath);
+                if (contentType == null) {
+                    contentType = "application/octet-stream";
+                }
+
+                return ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(contentType))
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                        .body(resource);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (MalformedURLException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @GetMapping("/company-logos/{fileName:.+}")
     public ResponseEntity<Resource> getCompanyLogo(@PathVariable String fileName) {
         try {
