@@ -164,6 +164,39 @@ public class ContractService {
         return ContractResponse.from(saved);
     }
 
+    // ─── Company signs contract ───────────────────────────────────────────────
+
+    public ContractResponse signContractAsCompany(String contractId, String companyEmail, String signatureBase64) {
+        Company company = companyRepository.findByEmail(companyEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found"));
+
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + contractId));
+
+        if (!contract.getCompanyId().equals(company.getId())) {
+            throw new RuntimeException("Unauthorized: contract does not belong to this company");
+        }
+        if (contract.getStatus() != ContractStatus.SIGNED) {
+            throw new RuntimeException("Freelancer must sign the contract first");
+        }
+        if (contract.getCompanySignedAt() != null) {
+            throw new RuntimeException("Contract is already signed by the company");
+        }
+
+        contract.setCompanySignatureImageBase64(signatureBase64);
+        contract.setCompanySignedAt(LocalDateTime.now());
+
+        try {
+            String signedPdfUrl = generateContractPdf(contract, true);
+            contract.setSignedPdfUrl(signedPdfUrl);
+        } catch (Exception e) {
+            log.error("Failed to regenerate fully signed PDF: {}", e.getMessage());
+        }
+
+        Contract saved = contractRepository.save(contract);
+        return ContractResponse.from(saved);
+    }
+
     // ─── Queries ─────────────────────────────────────────────────────────────
 
     public List<ContractResponse> getFreelancerContracts(String email) {
@@ -405,24 +438,39 @@ public class ContractService {
             drawSectionHeader(cs, fontBold, "SIGNATURES", margin, y - 8, contentWidth, PRIMARY);
 
             float sigY = y - 78;
-            drawSignatureBlock(cs, fontBold, fontReg, fontObliq,
-                    margin, sigY, colW, "Employer Signature", contract.getCompanyName(), null, false);
+            boolean companySigned = contract.getCompanySignedAt() != null;
+            boolean freelancerSigned = contract.getStatus() == ContractStatus.SIGNED;
 
-            boolean signed = contract.getStatus() == ContractStatus.SIGNED;
+            drawSignatureBlock(cs, fontBold, fontReg, fontObliq,
+                    margin, sigY, colW, "Employer Signature", contract.getCompanyName(),
+                    contract.getCompanySignedAt(), companySigned);
+
             drawSignatureBlock(cs, fontBold, fontReg, fontObliq,
                     margin + colW + 16, sigY, colW,
                     "Freelancer Signature", contract.getFreelancerName(),
-                    contract.getSignedAt(), signed);
+                    contract.getSignedAt(), freelancerSigned);
 
-            if (withSignature && signed && contract.getSignatureImageBase64() != null) {
+            if (withSignature && freelancerSigned && contract.getSignatureImageBase64() != null) {
                 try {
                     String b64 = contract.getSignatureImageBase64();
                     if (b64.contains(",")) b64 = b64.split(",")[1];
                     byte[] imgBytes = Base64.getDecoder().decode(b64);
-                    PDImageXObject sigImage = PDImageXObject.createFromByteArray(doc, imgBytes, "signature");
+                    PDImageXObject sigImage = PDImageXObject.createFromByteArray(doc, imgBytes, "freelancer-sig");
                     cs.drawImage(sigImage, margin + colW + 16, sigY + 10, 140, 50);
                 } catch (Exception e) {
-                    log.warn("Could not embed signature image: {}", e.getMessage());
+                    log.warn("Could not embed freelancer signature image: {}", e.getMessage());
+                }
+            }
+
+            if (withSignature && companySigned && contract.getCompanySignatureImageBase64() != null) {
+                try {
+                    String b64 = contract.getCompanySignatureImageBase64();
+                    if (b64.contains(",")) b64 = b64.split(",")[1];
+                    byte[] imgBytes = Base64.getDecoder().decode(b64);
+                    PDImageXObject sigImage = PDImageXObject.createFromByteArray(doc, imgBytes, "company-sig");
+                    cs.drawImage(sigImage, margin, sigY + 10, 140, 50);
+                } catch (Exception e) {
+                    log.warn("Could not embed company signature image: {}", e.getMessage());
                 }
             }
 
@@ -456,7 +504,7 @@ public class ContractService {
             cs.setNonStrokingColor(Color.WHITE);
             cs.newLineAtOffset(margin + 65, 27);
             cs.showText("WorkLink Platform  |  Freelance Mission Contract  |  Status: "
-                    + (signed ? "SIGNED" : "PENDING SIGNATURE"));
+                    + (freelancerSigned ? "SIGNED" : "PENDING SIGNATURE"));
             cs.endText();
         }
 

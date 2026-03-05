@@ -56,6 +56,19 @@ public class ContractController {
         return ResponseEntity.ok(contractService.signContract(id, userDetails.getUsername(), signatureBase64));
     }
 
+    /** POST /api/contracts/{id}/sign-company — company signs the contract */
+    @PostMapping("/{id}/sign-company")
+    public ResponseEntity<ContractResponse> signContractAsCompany(
+            @PathVariable String id,
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String signatureBase64 = body.get("signatureBase64");
+        if (signatureBase64 == null || signatureBase64.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(contractService.signContractAsCompany(id, userDetails.getUsername(), signatureBase64));
+    }
+
     /** GET /api/files/contracts/{fileName} — serve contract PDF file */
     @GetMapping("/files/{fileName:.+}")
     public ResponseEntity<Resource> downloadContractFile(@PathVariable String fileName) {

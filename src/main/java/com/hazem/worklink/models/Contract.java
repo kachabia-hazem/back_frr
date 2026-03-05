@@ -43,9 +43,13 @@ public class Contract {
     private String pdfUrl;         // path to unsigned PDF
     private String signedPdfUrl;   // path to signed PDF
 
-    // Signature
-    private String signatureImageBase64; // base64 PNG of drawn signature
-
+    // Freelancer signature
+    private String signatureImageBase64;
     private LocalDateTime signedAt;
+
+    // Company signature
+    private String companySignatureImageBase64;
+    private LocalDateTime companySignedAt;
+
     private LocalDateTime createdAt;
 }
