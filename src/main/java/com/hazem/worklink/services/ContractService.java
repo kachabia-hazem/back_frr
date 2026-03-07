@@ -26,9 +26,18 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
+import java.awt.AlphaComposite;
+import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import javax.imageio.ImageIO;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -94,12 +103,20 @@ public class ContractService {
         contract.setStatus(ContractStatus.PENDING_SIGNATURE);
         contract.setCreatedAt(LocalDateTime.now());
 
+        // Auto-sign on behalf of the company: generate signature image with company name + stamp
+        contract.setCompanySignedAt(LocalDateTime.now());
+        try {
+            contract.setCompanySignatureImageBase64(generateCompanyAutoSignature(company.getCompanyName()));
+        } catch (Exception e) {
+            log.warn("Could not generate company auto-signature image: {}", e.getMessage());
+        }
+
         // Save first to get ID
         Contract saved = contractRepository.save(contract);
 
-        // Generate PDF
+        // Generate PDF with company auto-signature already embedded
         try {
-            String pdfUrl = generateContractPdf(saved, false);
+            String pdfUrl = generateContractPdf(saved, true);
             saved.setPdfUrl(pdfUrl);
             saved = contractRepository.save(saved);
         } catch (Exception e) {
@@ -131,15 +148,15 @@ public class ContractService {
             throw new RuntimeException("Unauthorized: contract does not belong to this freelancer");
         }
 
-        if (contract.getStatus() == ContractStatus.SIGNED) {
-            throw new RuntimeException("Contract is already signed");
+        if (contract.getSignedAt() != null) {
+            throw new RuntimeException("Contract is already signed by the freelancer");
         }
 
         contract.setSignatureImageBase64(signatureBase64);
         contract.setStatus(ContractStatus.SIGNED);
         contract.setSignedAt(LocalDateTime.now());
 
-        // Generate signed PDF with signature
+        // Generate fully signed PDF (both signatures)
         try {
             String signedPdfUrl = generateContractPdf(contract, true);
             contract.setSignedPdfUrl(signedPdfUrl);
@@ -148,6 +165,9 @@ public class ContractService {
         }
 
         Contract saved = contractRepository.save(contract);
+
+        // Trigger active mission creation now that both parties have signed
+        activeMissionService.createFromContract(saved);
 
         // Notify company that freelancer signed
         Company company = companyRepository.findById(contract.getCompanyId()).orElse(null);
@@ -177,8 +197,8 @@ public class ContractService {
         if (!contract.getCompanyId().equals(company.getId())) {
             throw new RuntimeException("Unauthorized: contract does not belong to this company");
         }
-        if (contract.getStatus() != ContractStatus.SIGNED) {
-            throw new RuntimeException("Freelancer must sign the contract first");
+        if (contract.getStatus() != ContractStatus.PENDING_SIGNATURE) {
+            throw new RuntimeException("Contract is not in a signable state");
         }
         if (contract.getCompanySignedAt() != null) {
             throw new RuntimeException("Contract is already signed by the company");
@@ -187,17 +207,22 @@ public class ContractService {
         contract.setCompanySignatureImageBase64(signatureBase64);
         contract.setCompanySignedAt(LocalDateTime.now());
 
+        // Generate PDF with company signature — freelancer will add theirs later
         try {
             String signedPdfUrl = generateContractPdf(contract, true);
             contract.setSignedPdfUrl(signedPdfUrl);
         } catch (Exception e) {
-            log.error("Failed to regenerate fully signed PDF: {}", e.getMessage());
+            log.error("Failed to generate company-signed PDF: {}", e.getMessage());
         }
 
         Contract saved = contractRepository.save(contract);
 
-        // Trigger active mission creation
-        activeMissionService.createFromContract(saved);
+        // Notify freelancer that company has signed and it's their turn
+        Freelancer freelancer = freelancerRepository.findById(contract.getFreelancerId()).orElse(null);
+        if (freelancer != null) {
+            notificationService.sendContractGeneratedNotification(
+                    freelancer.getId(), contract.getMissionTitle(), company.getCompanyName(), saved.getId());
+        }
 
         return ContractResponse.from(saved);
     }
@@ -245,6 +270,117 @@ public class ContractService {
             throw new ResourceNotFoundException("Contract file not found: " + fileName);
         } catch (MalformedURLException e) {
             throw new RuntimeException("Bad file path: " + fileName, e);
+        }
+    }
+
+    // ─── Auto-signature image generator ──────────────────────────────────────
+
+    private String generateCompanyAutoSignature(String companyName) throws Exception {
+        Color green = new Color(34, 197, 94);
+
+        // Image: company name at top + circular stamp below
+        int imgW = 200, imgH = 195;
+        BufferedImage img = new BufferedImage(imgW, imgH, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = img.createGraphics();
+
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,      RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING,         RenderingHints.VALUE_RENDER_QUALITY);
+
+        // Transparent background
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR));
+        g.fillRect(0, 0, imgW, imgH);
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER));
+
+        // ── Company name at top ───────────────────────────────────────────────
+        String display = companyName.length() > 22 ? companyName.substring(0, 22) : companyName;
+        Font nameFont = new Font("SansSerif", Font.BOLD, 13);
+        g.setFont(nameFont);
+        g.setColor(new Color(26, 26, 46));
+        FontMetrics nfm = g.getFontMetrics();
+        g.drawString(display, (imgW - nfm.stringWidth(display)) / 2, 15);
+
+        // ── Stamp centered below name ─────────────────────────────────────────
+        int cx = imgW / 2;
+        int cy = 20 + (imgH - 20) / 2;   // stamp center Y
+        int r  = (imgH - 22) / 2 - 2;    // outer radius
+
+        // Outer circle (thick green)
+        g.setColor(green);
+        g.setStroke(new BasicStroke(3.5f));
+        g.drawOval(cx - r, cy - r, r * 2, r * 2);
+
+        // Inner circle (thinner)
+        int innerR = r - 12;
+        g.setStroke(new BasicStroke(2f));
+        g.drawOval(cx - innerR, cy - innerR, innerR * 2, innerR * 2);
+
+        // ── Curved "APPROVED" at top arc (205° → 335°, through 270°=top) ─────
+        Font arcFont = new Font("SansSerif", Font.BOLD, 11);
+        int arcR = r - 7;
+        drawStampCurvedText(g, "APPROVED", cx, cy, arcR, 205, 335, green, arcFont, true);
+
+        // ── Curved "APPROVED" at bottom arc (inverted, 25° → 155°) ───────────
+        // Reverse text so it reads correctly when stamp is flipped
+        drawStampCurvedText(g, new StringBuilder("APPROVED").reverse().toString(),
+                cx, cy, arcR, 25, 155, green, arcFont, false);
+
+        // ── Green rounded rectangle in center ─────────────────────────────────
+        int rectW = innerR * 2 - 10;
+        int rectH = 30;
+        int rectX = cx - rectW / 2;
+        int rectY = cy - rectH / 2;
+        g.setColor(green);
+        g.fillRoundRect(rectX, rectY, rectW, rectH, 10, 10);
+
+        // "APPROVED" in white inside the rectangle
+        Font centerFont = new Font("SansSerif", Font.BOLD, 14);
+        g.setFont(centerFont);
+        g.setColor(Color.WHITE);
+        FontMetrics cfm = g.getFontMetrics();
+        String approvedTxt = "APPROVED";
+        g.drawString(approvedTxt,
+                cx - cfm.stringWidth(approvedTxt) / 2,
+                rectY + rectH / 2 + cfm.getAscent() / 2 - 3);
+
+        g.dispose();
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(img, "PNG", baos);
+        return "data:image/png;base64," + Base64.getEncoder().encodeToString(baos.toByteArray());
+    }
+
+    /**
+     * Draws text curved along a circle arc.
+     * topArc=true  → characters upright, tops pointing outward (normal reading at top)
+     * topArc=false → characters inverted (rubber-stamp style at bottom)
+     */
+    private void drawStampCurvedText(Graphics2D g, String text, int cx, int cy, int radius,
+                                     double startDeg, double endDeg,
+                                     Color color, Font font, boolean topArc) {
+        FontMetrics fm = g.getFontMetrics(font);
+        char[] chars = text.toCharArray();
+        double startRad = Math.toRadians(startDeg);
+        double endRad   = Math.toRadians(endDeg);
+        double step     = (endRad - startRad) / chars.length;
+
+        for (int i = 0; i < chars.length; i++) {
+            double angle = startRad + step * i + step / 2.0;
+            double px = cx + radius * Math.cos(angle);
+            double py = cy + radius * Math.sin(angle);
+
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.translate(px, py);
+            // top arc: rotate so char top points away from center
+            // bottom arc: same rotation makes chars appear upside-down (stamp style)
+            g2.rotate(angle + Math.PI / 2);
+            g2.setFont(font);
+            g2.setColor(color);
+            String ch = String.valueOf(chars[i]);
+            g2.drawString(ch, -fm.stringWidth(ch) / 2,
+                    topArc ? fm.getAscent() * 2 / 3 : -fm.getDescent());
+            g2.dispose();
         }
     }
 
@@ -473,7 +609,8 @@ public class ContractService {
                     if (b64.contains(",")) b64 = b64.split(",")[1];
                     byte[] imgBytes = Base64.getDecoder().decode(b64);
                     PDImageXObject sigImage = PDImageXObject.createFromByteArray(doc, imgBytes, "company-sig");
-                    cs.drawImage(sigImage, margin, sigY + 10, 140, 50);
+                    // Display as a square stamp (200x195 → 75x73 in PDF units)
+                    cs.drawImage(sigImage, margin + 5, sigY - 10, 75, 73);
                 } catch (Exception e) {
                     log.warn("Could not embed company signature image: {}", e.getMessage());
                 }
