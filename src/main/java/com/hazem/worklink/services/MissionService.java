@@ -16,8 +16,10 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -30,6 +32,7 @@ public class MissionService {
     private final CompanyRepository companyRepository;
     private final FreelancerRepository freelancerRepository;
     private final NotificationService notificationService;
+    private final AiSearchClient aiSearchClient;
 
     public Mission createMission(String companyEmail, CreateMissionRequest request) {
         Company company = companyRepository.findByEmail(companyEmail)
@@ -56,6 +59,9 @@ public class MissionService {
         mission.setUpdatedAt(LocalDateTime.now());
 
         Mission savedMission = missionRepository.save(mission);
+
+        // Index in AI service for semantic search
+        aiSearchClient.indexMission(savedMission);
 
         // Notify the company: mission published successfully
         notificationService.sendMissionPublishedNotification(
@@ -212,6 +218,46 @@ public class MissionService {
         }
         missionRepository.delete(mission);
     }
+
+    // ── AI Semantic Search ────────────────────────────────────────────────────
+
+    public List<AiMissionResult> aiSearch(String prompt, int topK) {
+        // 1. Appel au microservice Python → liste de {missionId, score}
+        List<AiSearchClient.AiSearchResult> aiResults = aiSearchClient.search(prompt, topK);
+
+        if (aiResults.isEmpty()) return List.of();
+
+        // 2. Récupérer les missions correspondantes depuis MongoDB
+        List<String> ids = aiResults.stream()
+                .map(AiSearchClient.AiSearchResult::missionId)
+                .collect(Collectors.toList());
+
+        Map<String, Mission> missionMap = missionRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Mission::getId, m -> m));
+
+        Map<String, Company> companyMap = missionMap.values().stream()
+                .map(Mission::getCompanyId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toMap(
+                        id -> id,
+                        id -> companyRepository.findById(id).orElse(null),
+                        (a, b) -> a
+                ));
+
+        // 3. Conserver l'ordre du score AI + enrichir avec données company
+        return aiResults.stream()
+                .filter(r -> missionMap.containsKey(r.missionId()))
+                .map(r -> {
+                    Mission m = missionMap.get(r.missionId());
+                    Company c = companyMap.get(m.getCompanyId());
+                    MissionResponse response = MissionResponse.from(m, c);
+                    return new AiMissionResult(response, r.score());
+                })
+                .collect(Collectors.toList());
+    }
+
+    public record AiMissionResult(MissionResponse mission, double score) {}
 
     private List<MissionResponse> enrichMissionsWithCompany(List<Mission> missions) {
         List<String> companyIds = missions.stream()

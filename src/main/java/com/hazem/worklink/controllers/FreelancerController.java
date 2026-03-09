@@ -39,6 +39,13 @@ public class FreelancerController {
         return ResponseEntity.ok(freelancerService.getAllFreelancers());
     }
 
+    @GetMapping("/public/ai-search")
+    public ResponseEntity<java.util.List<FreelancerService.AiFreelancerResult>> aiSearch(
+            @RequestParam String prompt,
+            @RequestParam(defaultValue = "20") int topK) {
+        return ResponseEntity.ok(freelancerService.aiSearchFreelancers(prompt, topK));
+    }
+
     @GetMapping("/me")
     public ResponseEntity<Freelancer> getMyProfile(Authentication authentication) {
         String email = authentication.getName();

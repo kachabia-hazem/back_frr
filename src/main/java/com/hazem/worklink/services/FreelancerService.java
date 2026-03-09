@@ -9,12 +9,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class FreelancerService {
 
     private final FreelancerRepository freelancerRepository;
+    private final AiSearchClient aiSearchClient;
 
     public Freelancer getFreelancerById(String id) {
         return freelancerRepository.findById(id)
@@ -76,7 +79,9 @@ public class FreelancerService {
             freelancer.setPortfolioUrl(request.getPortfolioUrl());
         }
 
-        return freelancerRepository.save(freelancer);
+        Freelancer saved = freelancerRepository.save(freelancer);
+        aiSearchClient.indexFreelancer(saved);
+        return saved;
     }
 
     public Freelancer updateCvData(String email, UpdateCvDataRequest request) {
@@ -101,7 +106,9 @@ public class FreelancerService {
             freelancer.setWorkExperience(request.getWorkExperience());
         }
 
-        return freelancerRepository.save(freelancer);
+        Freelancer saved = freelancerRepository.save(freelancer);
+        aiSearchClient.indexFreelancer(saved);
+        return saved;
     }
 
     public Freelancer updateProfilePicture(String email, String pictureUrl) {
@@ -141,4 +148,26 @@ public class FreelancerService {
         }
         return freelancerRepository.save(freelancer);
     }
+
+    // ── AI Semantic Search ────────────────────────────────────────────────────
+
+    public List<AiFreelancerResult> aiSearchFreelancers(String prompt, int topK) {
+        List<AiSearchClient.AiFreelancerSearchResult> aiResults = aiSearchClient.searchFreelancers(prompt, topK);
+
+        if (aiResults.isEmpty()) return List.of();
+
+        List<String> ids = aiResults.stream()
+                .map(AiSearchClient.AiFreelancerSearchResult::freelancerId)
+                .collect(Collectors.toList());
+
+        Map<String, Freelancer> freelancerMap = freelancerRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Freelancer::getId, f -> f));
+
+        return aiResults.stream()
+                .filter(r -> freelancerMap.containsKey(r.freelancerId()))
+                .map(r -> new AiFreelancerResult(freelancerMap.get(r.freelancerId()), r.score()))
+                .collect(Collectors.toList());
+    }
+
+    public record AiFreelancerResult(Freelancer freelancer, double score) {}
 }

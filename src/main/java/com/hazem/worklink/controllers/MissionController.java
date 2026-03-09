@@ -39,6 +39,13 @@ public class MissionController {
         return ResponseEntity.ok(missionService.getOpenMissionsWithCompany());
     }
 
+    @GetMapping("/public/ai-search")
+    public ResponseEntity<List<MissionService.AiMissionResult>> aiSearch(
+            @RequestParam String prompt,
+            @RequestParam(defaultValue = "10") int topK) {
+        return ResponseEntity.ok(missionService.aiSearch(prompt, topK));
+    }
+
     @GetMapping("/public/{id}")
     public ResponseEntity<MissionResponse> getMissionById(@PathVariable String id) {
         return ResponseEntity.ok(missionService.getMissionByIdWithCompany(id));

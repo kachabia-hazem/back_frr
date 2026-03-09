@@ -28,6 +28,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
     private final NotificationService notificationService;
+    private final AiSearchClient aiSearchClient;
 
     // Register Freelancer
     public AuthResponse registerFreelancer(RegisterFreelancerRequest request) {
@@ -58,6 +59,9 @@ public class AuthService {
         freelancer.setRating(0.0);
 
         Freelancer savedFreelancer = freelancerRepository.save(freelancer);
+
+        // Indexer dans le moteur AI
+        aiSearchClient.indexFreelancer(savedFreelancer);
 
         // Send welcome notification
         notificationService.sendWelcomeNotification(savedFreelancer.getId());
