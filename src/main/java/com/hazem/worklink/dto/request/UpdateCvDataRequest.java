@@ -4,6 +4,7 @@ import com.hazem.worklink.models.embedded.Certification;
 import com.hazem.worklink.models.embedded.Education;
 import com.hazem.worklink.models.embedded.Project;
 import com.hazem.worklink.models.embedded.WorkExperience;
+import com.hazem.worklink.models.enums.Language;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -20,4 +21,5 @@ public class UpdateCvDataRequest {
     private List<String> skills;
     private List<Certification> certifications;
     private List<WorkExperience> workExperience;
+    private List<Language> languages;
 }
