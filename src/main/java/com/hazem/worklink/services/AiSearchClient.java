@@ -48,16 +48,17 @@ public class AiSearchClient {
     // ── Indexation d'une mission ──────────────────────────────────────────────
     public void indexMission(Mission mission) {
         try {
-            Map<String, Object> body = Map.of(
-                    "id",                    mission.getId(),
-                    "jobTitle",              nullSafe(mission.getJobTitle()),
-                    "field",                 nullSafe(mission.getField()),
-                    "description",           nullSafe(mission.getDescription()),
-                    "requiredSkills",        nullSafe(mission.getRequiredSkills()),
-                    "technicalEnvironment",  nullSafe(mission.getTechnicalEnvironment()),
-                    "missionBusinessSector", nullSafe(mission.getMissionBusinessSector()),
-                    "speciality",            nullSafe(mission.getSpeciality())
-            );
+            Map<String, Object> body = new HashMap<>();
+            body.put("id",                    mission.getId());
+            body.put("jobTitle",              nullSafe(mission.getJobTitle()));
+            body.put("field",                 nullSafe(mission.getField()));
+            body.put("description",           nullSafe(mission.getDescription()));
+            body.put("requiredSkills",        nullSafe(mission.getRequiredSkills()));
+            body.put("technicalEnvironment",  nullSafe(mission.getTechnicalEnvironment()));
+            body.put("missionBusinessSector", nullSafe(mission.getMissionBusinessSector()));
+            body.put("speciality",            nullSafe(mission.getSpeciality()));
+            body.put("location",              nullSafe(mission.getLocation()));
+            body.put("missionType",           nullSafe(mission.getMissionType()));
             restTemplate.postForObject(aiServiceUrl + "/index-mission", body, Map.class);
             log.info("[AI-INDEX] Mission indexed: {}", mission.getId());
         } catch (Exception e) {
@@ -77,6 +78,9 @@ public class AiSearchClient {
             body.put("profileTypes",      freelancer.getProfileTypes() != null
                     ? freelancer.getProfileTypes().stream().map(Enum::name).collect(Collectors.toList())
                     : List.of());
+            body.put("location",          nullSafe(freelancer.getLocation()));
+            body.put("city",              nullSafe(freelancer.getCity()));
+            body.put("country",           nullSafe(freelancer.getCountry()));
             restTemplate.postForObject(aiServiceUrl + "/index-freelancer", body, Map.class);
             log.info("[AI-INDEX] Freelancer indexed: {}", freelancer.getId());
         } catch (Exception e) {
