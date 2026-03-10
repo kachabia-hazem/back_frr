@@ -3,11 +3,13 @@ package com.hazem.worklink.controllers;
 import com.hazem.worklink.dto.request.UpdateCvDataRequest;
 import com.hazem.worklink.dto.request.UpdateFreelancerRequest;
 import com.hazem.worklink.models.Freelancer;
+import com.hazem.worklink.services.AiSearchClient;
 import com.hazem.worklink.services.FreelancerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/freelancer")
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 public class FreelancerController {
 
     private final FreelancerService freelancerService;
+    private final AiSearchClient aiSearchClient;
 
     @GetMapping("/public/{id}")
     public ResponseEntity<Freelancer> getFreelancerById(@PathVariable String id) {
@@ -60,6 +63,17 @@ public class FreelancerController {
         String email = authentication.getName();
         Freelancer freelancer = freelancerService.updateFreelancer(email, request);
         return ResponseEntity.ok(freelancer);
+    }
+
+    @PostMapping("/me/extract-cv")
+    public ResponseEntity<java.util.Map<String, Object>> extractCvData(
+            Authentication authentication,
+            @RequestParam("file") MultipartFile file) {
+        java.util.Map<String, Object> extracted = aiSearchClient.extractCvData(file);
+        if (extracted.isEmpty()) {
+            return ResponseEntity.status(503).body(java.util.Map.of("error", "AI service unavailable or extraction failed"));
+        }
+        return ResponseEntity.ok(extracted);
     }
 
     @PutMapping("/me/cv")

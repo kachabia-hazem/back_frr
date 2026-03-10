@@ -105,6 +105,9 @@ public class FreelancerService {
         if (request.getWorkExperience() != null) {
             freelancer.setWorkExperience(request.getWorkExperience());
         }
+        if (request.getLanguages() != null) {
+            freelancer.setLanguages(request.getLanguages());
+        }
 
         Freelancer saved = freelancerRepository.save(freelancer);
         aiSearchClient.indexFreelancer(saved);

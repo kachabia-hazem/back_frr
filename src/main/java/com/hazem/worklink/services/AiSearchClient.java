@@ -4,8 +4,15 @@ import com.hazem.worklink.models.Mission;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -107,6 +114,36 @@ public class AiSearchClient {
         } catch (Exception e) {
             log.error("[AI-SEARCH] Error calling AI service for freelancers: {}", e.getMessage());
             return Collections.emptyList();
+        }
+    }
+
+    // ── Extraction CV via Ollama ──────────────────────────────────────────────
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> extractCvData(MultipartFile file) {
+        try {
+            byte[] bytes = file.getBytes();
+            String filename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "cv.pdf";
+
+            ByteArrayResource resource = new ByteArrayResource(bytes) {
+                @Override
+                public String getFilename() { return filename; }
+            };
+
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("file", resource);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+            Map<String, Object> response = restTemplate.postForObject(
+                    aiServiceUrl + "/extract-cv", requestEntity, Map.class);
+
+            return response != null ? response : Collections.emptyMap();
+        } catch (Exception e) {
+            log.error("[AI-EXTRACT] Error extracting CV: {}", e.getMessage());
+            return Collections.emptyMap();
         }
     }
 
