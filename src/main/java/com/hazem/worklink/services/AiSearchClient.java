@@ -147,6 +147,70 @@ public class AiSearchClient {
         }
     }
 
+    // ── Mission Matching ──────────────────────────────────────────────────────
+    @SuppressWarnings("unchecked")
+    public MatchMissionResponse matchMission(com.hazem.worklink.models.Freelancer freelancer,
+                                             com.hazem.worklink.models.Mission mission) {
+        try {
+            Map<String, Object> body = new HashMap<>();
+            body.put("freelancerSkills",    freelancer.getSkills() != null ? freelancer.getSkills() : List.of());
+            body.put("freelancerBio",       nullSafe(freelancer.getBio()));
+            body.put("freelancerPosition",  nullSafe(freelancer.getCurrentPosition()));
+            body.put("freelancerExperience", freelancer.getYearsOfExperience());
+
+            // Work experience
+            List<Map<String, Object>> weList = new java.util.ArrayList<>();
+            if (freelancer.getWorkExperience() != null) {
+                for (var we : freelancer.getWorkExperience()) {
+                    Map<String, Object> weMap = new HashMap<>();
+                    weMap.put("jobTitle",    we.getJobTitle() != null ? we.getJobTitle() : "");
+                    weMap.put("company",     we.getCompany() != null ? we.getCompany() : "");
+                    weMap.put("description", we.getDescription() != null ? we.getDescription() : "");
+                    weMap.put("isCurrent",   Boolean.TRUE.equals(we.getIsCurrent()));
+                    weList.add(weMap);
+                }
+            }
+            body.put("workExperience", weList);
+
+            // Projects
+            List<Map<String, Object>> projList = new java.util.ArrayList<>();
+            if (freelancer.getProjects() != null) {
+                for (var p : freelancer.getProjects()) {
+                    Map<String, Object> pMap = new HashMap<>();
+                    pMap.put("name",         p.getName() != null ? p.getName() : "");
+                    pMap.put("description",  p.getDescription() != null ? p.getDescription() : "");
+                    pMap.put("technologies", p.getTechnologies() != null ? p.getTechnologies() : List.of());
+                    projList.add(pMap);
+                }
+            }
+            body.put("projects", projList);
+
+            // Mission data
+            body.put("missionTitle",               nullSafe(mission.getJobTitle()));
+            body.put("missionDescription",         nullSafe(mission.getDescription()));
+            body.put("missionRequiredSkills",       nullSafe(mission.getRequiredSkills()));
+            body.put("missionTechnicalEnvironment", nullSafe(mission.getTechnicalEnvironment()));
+
+            Map<String, Object> response = restTemplate.postForObject(
+                    aiServiceUrl + "/match-mission", body, Map.class);
+
+            if (response == null) throw new RuntimeException("Null response from AI service");
+
+            return new MatchMissionResponse(
+                    ((Number) response.getOrDefault("score", 0)).intValue(),
+                    ((Number) response.getOrDefault("skillScore", 0)).intValue(),
+                    ((Number) response.getOrDefault("semanticScore", 0)).intValue(),
+                    (List<String>) response.getOrDefault("matchedSkills", List.of()),
+                    (List<String>) response.getOrDefault("missingSkills", List.of()),
+                    (String) response.getOrDefault("recommendation", ""),
+                    (String) response.getOrDefault("explanation", "")
+            );
+        } catch (Exception e) {
+            log.error("[AI-MATCH] Error calling match-mission: {}", e.getMessage());
+            throw new RuntimeException("AI matching service unavailable: " + e.getMessage());
+        }
+    }
+
     private String nullSafe(String s) {
         return s != null ? s : "";
     }
@@ -154,4 +218,13 @@ public class AiSearchClient {
     // ── DTOs internes ─────────────────────────────────────────────────────────
     public record AiSearchResult(String missionId, double score) {}
     public record AiFreelancerSearchResult(String freelancerId, double score) {}
+    public record MatchMissionResponse(
+            int score,
+            int skillScore,
+            int semanticScore,
+            List<String> matchedSkills,
+            List<String> missingSkills,
+            String recommendation,
+            String explanation
+    ) {}
 }

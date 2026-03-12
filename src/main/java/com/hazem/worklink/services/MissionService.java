@@ -259,6 +259,13 @@ public class MissionService {
 
     public record AiMissionResult(MissionResponse mission, double score) {}
 
+    public AiSearchClient.MatchMissionResponse matchMission(String freelancerEmail, String missionId) {
+        com.hazem.worklink.models.Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found"));
+        Mission mission = getMissionById(missionId);
+        return aiSearchClient.matchMission(freelancer, mission);
+    }
+
     private List<MissionResponse> enrichMissionsWithCompany(List<Mission> missions) {
         List<String> companyIds = missions.stream()
                 .map(Mission::getCompanyId)

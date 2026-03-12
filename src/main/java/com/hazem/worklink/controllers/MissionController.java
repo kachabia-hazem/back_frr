@@ -69,4 +69,12 @@ public class MissionController {
         missionService.deleteMission(email, id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/{id}/match")
+    public ResponseEntity<com.hazem.worklink.services.AiSearchClient.MatchMissionResponse> matchMission(
+            Authentication authentication,
+            @PathVariable String id) {
+        String email = authentication.getName();
+        return ResponseEntity.ok(missionService.matchMission(email, id));
+    }
 }
