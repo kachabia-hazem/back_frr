@@ -211,6 +211,44 @@ public class AiSearchClient {
         }
     }
 
+    // ── Rank Candidates ───────────────────────────────────────────────────────
+    @SuppressWarnings("unchecked")
+    public List<RankCandidateResult> rankCandidates(com.hazem.worklink.models.Mission mission,
+                                                     List<Map<String, Object>> candidates) {
+        try {
+            Map<String, Object> body = new HashMap<>();
+            body.put("missionId",                    nullSafe(mission.getId()));
+            body.put("missionTitle",                 nullSafe(mission.getJobTitle()));
+            body.put("missionDescription",           nullSafe(mission.getDescription()));
+            body.put("missionRequiredSkills",        nullSafe(mission.getRequiredSkills()));
+            body.put("missionTechnicalEnvironment",  nullSafe(mission.getTechnicalEnvironment()));
+            body.put("missionYearsOfExperience",     mission.getYearsOfExperience());
+            body.put("candidates",                   candidates);
+
+            List<Map<String, Object>> response = restTemplate.postForObject(
+                    aiServiceUrl + "/rank-candidates", body, List.class);
+
+            if (response == null) return Collections.emptyList();
+
+            return response.stream().map(r -> new RankCandidateResult(
+                    (String)  r.get("applicationId"),
+                    (String)  r.get("freelancerId"),
+                    ((Number) r.get("rank")).intValue(),
+                    ((Number) r.get("totalScore")).doubleValue(),
+                    ((Number) r.get("skillScore")).doubleValue(),
+                    ((Number) r.get("experienceScore")).doubleValue(),
+                    ((Number) r.get("semanticScore")).doubleValue(),
+                    ((Number) r.get("completenessScore")).doubleValue(),
+                    (List<String>) r.getOrDefault("matchedSkills", List.of()),
+                    (List<String>) r.getOrDefault("missingSkills", List.of())
+            )).collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("[AI-RANK] Error calling rank-candidates: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
     private String nullSafe(String s) {
         return s != null ? s : "";
     }
@@ -218,6 +256,18 @@ public class AiSearchClient {
     // ── DTOs internes ─────────────────────────────────────────────────────────
     public record AiSearchResult(String missionId, double score) {}
     public record AiFreelancerSearchResult(String freelancerId, double score) {}
+    public record RankCandidateResult(
+            String applicationId,
+            String freelancerId,
+            int rank,
+            double totalScore,
+            double skillScore,
+            double experienceScore,
+            double semanticScore,
+            double completenessScore,
+            List<String> matchedSkills,
+            List<String> missingSkills
+    ) {}
     public record MatchMissionResponse(
             int score,
             int skillScore,

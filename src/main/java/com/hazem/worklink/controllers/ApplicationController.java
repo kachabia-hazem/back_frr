@@ -2,6 +2,7 @@ package com.hazem.worklink.controllers;
 
 import com.hazem.worklink.dto.request.CreateApplicationRequest;
 import com.hazem.worklink.dto.response.ApplicationResponse;
+import com.hazem.worklink.dto.response.RankedApplicationResponse;
 import com.hazem.worklink.models.Application;
 import com.hazem.worklink.services.ApplicationService;
 import jakarta.validation.Valid;
@@ -63,6 +64,14 @@ public class ApplicationController {
             @PathVariable String missionId) {
         String email = authentication.getName();
         return ResponseEntity.ok(applicationService.getMissionApplications(email, missionId));
+    }
+
+    @GetMapping("/mission/{missionId}/ranked")
+    public ResponseEntity<List<RankedApplicationResponse>> getRankedApplications(
+            Authentication authentication,
+            @PathVariable String missionId) {
+        String email = authentication.getName();
+        return ResponseEntity.ok(applicationService.getRankedApplications(email, missionId));
     }
 
     @PatchMapping("/{id}/status")

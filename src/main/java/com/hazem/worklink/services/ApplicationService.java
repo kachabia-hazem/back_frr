@@ -2,6 +2,7 @@ package com.hazem.worklink.services;
 
 import com.hazem.worklink.dto.request.CreateApplicationRequest;
 import com.hazem.worklink.dto.response.ApplicationResponse;
+import com.hazem.worklink.dto.response.RankedApplicationResponse;
 import com.hazem.worklink.exceptions.ResourceNotFoundException;
 import com.hazem.worklink.models.Application;
 import com.hazem.worklink.models.Company;
@@ -17,6 +18,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -32,6 +35,7 @@ public class ApplicationService {
     private final CompanyRepository companyRepository;
     private final NotificationService notificationService;
     private final ContractService contractService;
+    private final AiSearchClient aiSearchClient;
 
     public Application submitApplication(String freelancerEmail, CreateApplicationRequest request) {
         Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
@@ -222,6 +226,142 @@ public class ApplicationService {
                 .map(app -> ApplicationResponse.fromWithFreelancer(
                         app, mission, company, freelancerMap.get(app.getFreelancerId())))
                 .collect(Collectors.toList());
+    }
+
+    public List<RankedApplicationResponse> getRankedApplications(String companyEmail, String missionId) {
+        Company company = companyRepository.findByEmail(companyEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found"));
+
+        Mission mission = missionRepository.findById(missionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Mission not found"));
+
+        if (!mission.getCompanyId().equals(company.getId())) {
+            throw new RuntimeException("Unauthorized: mission does not belong to this company");
+        }
+
+        List<Application> applications = applicationRepository.findByMissionId(missionId)
+                .stream()
+                .filter(a -> a.getStatus() != ApplicationStatus.WITHDRAWN)
+                .collect(Collectors.toList());
+
+        if (applications.isEmpty()) return List.of();
+
+        // Récupérer les profils freelancers
+        List<String> freelancerIds = applications.stream()
+                .map(Application::getFreelancerId).distinct().collect(Collectors.toList());
+        Map<String, Freelancer> freelancerMap = freelancerIds.isEmpty() ? Map.of()
+                : freelancerRepository.findAllById(freelancerIds).stream()
+                    .collect(Collectors.toMap(Freelancer::getId, f -> f));
+
+        // Construire la liste candidates pour l'AI service
+        List<Map<String, Object>> candidates = new ArrayList<>();
+        for (Application app : applications) {
+            Freelancer f = freelancerMap.get(app.getFreelancerId());
+            if (f == null) continue;
+
+            Map<String, Object> candidate = new HashMap<>();
+            candidate.put("applicationId", app.getId());
+            candidate.put("freelancerId", f.getId());
+            candidate.put("skills", f.getSkills() != null ? f.getSkills() : List.of());
+            candidate.put("bio", f.getBio() != null ? f.getBio() : "");
+            candidate.put("currentPosition", f.getCurrentPosition() != null ? f.getCurrentPosition() : "");
+            candidate.put("yearsOfExperience", f.getYearsOfExperience());
+            candidate.put("profileTypes", f.getProfileTypes() != null
+                    ? f.getProfileTypes().stream().map(Enum::name).collect(Collectors.toList()) : List.of());
+            candidate.put("rating", f.getRating());
+            candidate.put("portfolioUrl", f.getPortfolioUrl());
+            candidate.put("cvUrl", f.getCvUrl());
+
+            // Work experience
+            List<Map<String, Object>> weList = new ArrayList<>();
+            if (f.getWorkExperience() != null) {
+                for (var we : f.getWorkExperience()) {
+                    Map<String, Object> weMap = new HashMap<>();
+                    weMap.put("jobTitle",    we.getJobTitle() != null ? we.getJobTitle() : "");
+                    weMap.put("company",     we.getCompany() != null ? we.getCompany() : "");
+                    weMap.put("description", we.getDescription() != null ? we.getDescription() : "");
+                    weList.add(weMap);
+                }
+            }
+            candidate.put("workExperience", weList);
+
+            // Projects
+            List<Map<String, Object>> projList = new ArrayList<>();
+            if (f.getProjects() != null) {
+                for (var p : f.getProjects()) {
+                    Map<String, Object> pMap = new HashMap<>();
+                    pMap.put("name",         p.getName() != null ? p.getName() : "");
+                    pMap.put("description",  p.getDescription() != null ? p.getDescription() : "");
+                    pMap.put("technologies", p.getTechnologies() != null ? p.getTechnologies() : List.of());
+                    projList.add(pMap);
+                }
+            }
+            candidate.put("projects", projList);
+
+            // Certifications
+            candidate.put("certifications", f.getCertifications() != null ? f.getCertifications() : List.of());
+            candidate.put("education",      f.getEducation()      != null ? f.getEducation()      : List.of());
+
+            candidates.add(candidate);
+        }
+
+        // Appeler l'AI service
+        List<AiSearchClient.RankCandidateResult> aiResults = aiSearchClient.rankCandidates(mission, candidates);
+
+        // Si l'AI échoue, retourner la liste non classée
+        if (aiResults.isEmpty()) {
+            return applications.stream().map(app -> {
+                Freelancer f = freelancerMap.get(app.getFreelancerId());
+                return buildRankedResponse(app, f, 0, 0, 0, 0, 0, 0, List.of(), List.of());
+            }).collect(Collectors.toList());
+        }
+
+        // Construire les réponses enrichies dans l'ordre du ranking
+        Map<String, Application> appMap = applications.stream()
+                .collect(Collectors.toMap(Application::getId, a -> a));
+
+        return aiResults.stream().map(r -> {
+            Application app = appMap.get(r.applicationId());
+            Freelancer f = freelancerMap.get(r.freelancerId());
+            if (app == null) return null;
+            return buildRankedResponse(app, f, r.rank(), r.totalScore(), r.skillScore(),
+                    r.experienceScore(), r.semanticScore(), r.completenessScore(),
+                    r.matchedSkills(), r.missingSkills());
+        }).filter(r -> r != null).collect(Collectors.toList());
+    }
+
+    private RankedApplicationResponse buildRankedResponse(
+            Application app, Freelancer f, int rank,
+            double total, double skill, double exp, double semantic, double completeness,
+            List<String> matched, List<String> missing) {
+        return RankedApplicationResponse.builder()
+                .applicationId(app.getId())
+                .freelancerId(app.getFreelancerId())
+                .firstName(app.getFirstName())
+                .lastName(app.getLastName())
+                .email(app.getEmail())
+                .phoneNumber(app.getPhoneNumber())
+                .city(app.getCity())
+                .country(app.getCountry())
+                .cvUrl(app.getCvUrl())
+                .salaryExpectations(app.getSalaryExpectations())
+                .status(app.getStatus())
+                .submittedAt(app.getSubmittedAt())
+                .freelancerCurrentPosition(f != null ? f.getCurrentPosition() : null)
+                .freelancerProfilePicture(f != null ? f.getProfilePicture() : null)
+                .freelancerSkills(f != null ? f.getSkills() : List.of())
+                .freelancerYearsOfExperience(f != null ? f.getYearsOfExperience() : null)
+                .freelancerRating(f != null ? f.getRating() : null)
+                .freelancerBio(f != null ? f.getBio() : null)
+                .rank(rank)
+                .totalScore(total)
+                .skillScore(skill)
+                .experienceScore(exp)
+                .semanticScore(semantic)
+                .completenessScore(completeness)
+                .matchedSkills(matched)
+                .missingSkills(missing)
+                .build();
     }
 
     public ApplicationResponse updateApplicationStatus(String companyEmail, String applicationId, String status) {
