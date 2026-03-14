@@ -263,6 +263,13 @@ public class MissionService {
         com.hazem.worklink.models.Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found"));
         Mission mission = getMissionById(missionId);
+        return aiSearchClient.matchMissionQuick(freelancer, mission);
+    }
+
+    public AiSearchClient.MatchMissionResponse matchMissionFull(String freelancerEmail, String missionId) {
+        com.hazem.worklink.models.Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found"));
+        Mission mission = getMissionById(missionId);
         return aiSearchClient.matchMission(freelancer, mission);
     }
 

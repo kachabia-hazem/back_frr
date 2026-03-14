@@ -147,10 +147,24 @@ public class AiSearchClient {
         }
     }
 
-    // ── Mission Matching ──────────────────────────────────────────────────────
+    // ── Mission Matching (rapide, sans LLM ~2s) ──────────────────────────────
+    @SuppressWarnings("unchecked")
+    public MatchMissionResponse matchMissionQuick(com.hazem.worklink.models.Freelancer freelancer,
+                                                  com.hazem.worklink.models.Mission mission) {
+        return callMatchEndpoint(freelancer, mission, "/match-mission-quick");
+    }
+
+    // ── Mission Matching complet (avec LLM ~30s) ──────────────────────────────
     @SuppressWarnings("unchecked")
     public MatchMissionResponse matchMission(com.hazem.worklink.models.Freelancer freelancer,
                                              com.hazem.worklink.models.Mission mission) {
+        return callMatchEndpoint(freelancer, mission, "/match-mission");
+    }
+
+    @SuppressWarnings("unchecked")
+    private MatchMissionResponse callMatchEndpoint(com.hazem.worklink.models.Freelancer freelancer,
+                                                   com.hazem.worklink.models.Mission mission,
+                                                   String endpoint) {
         try {
             Map<String, Object> body = new HashMap<>();
             body.put("freelancerSkills",    freelancer.getSkills() != null ? freelancer.getSkills() : List.of());
@@ -192,7 +206,7 @@ public class AiSearchClient {
             body.put("missionTechnicalEnvironment", nullSafe(mission.getTechnicalEnvironment()));
 
             Map<String, Object> response = restTemplate.postForObject(
-                    aiServiceUrl + "/match-mission", body, Map.class);
+                    aiServiceUrl + endpoint, body, Map.class);
 
             if (response == null) throw new RuntimeException("Null response from AI service");
 
@@ -206,7 +220,7 @@ public class AiSearchClient {
                     (String) response.getOrDefault("explanation", "")
             );
         } catch (Exception e) {
-            log.error("[AI-MATCH] Error calling match-mission: {}", e.getMessage());
+            log.error("[AI-MATCH] Error calling {}: {}", endpoint, e.getMessage());
             throw new RuntimeException("AI matching service unavailable: " + e.getMessage());
         }
     }

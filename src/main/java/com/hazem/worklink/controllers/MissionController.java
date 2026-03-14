@@ -77,4 +77,12 @@ public class MissionController {
         String email = authentication.getName();
         return ResponseEntity.ok(missionService.matchMission(email, id));
     }
+
+    @GetMapping("/{id}/match/explain")
+    public ResponseEntity<com.hazem.worklink.services.AiSearchClient.MatchMissionResponse> matchMissionFull(
+            Authentication authentication,
+            @PathVariable String id) {
+        String email = authentication.getName();
+        return ResponseEntity.ok(missionService.matchMissionFull(email, id));
+    }
 }
