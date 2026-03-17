@@ -31,4 +31,6 @@ public abstract class User {
     protected LocalDateTime createdAt = LocalDateTime.now();
 
     protected LocalDateTime updatedAt = LocalDateTime.now();
+
+    protected LocalDateTime lastSeen;
 }

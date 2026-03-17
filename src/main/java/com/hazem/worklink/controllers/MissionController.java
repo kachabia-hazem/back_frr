@@ -70,6 +70,13 @@ public class MissionController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/recommended")
+    public ResponseEntity<List<MissionService.AiMissionResult>> getRecommendedMissions(
+            Authentication authentication) {
+        String email = authentication.getName();
+        return ResponseEntity.ok(missionService.getRecommendedMissions(email));
+    }
+
     @GetMapping("/{id}/match")
     public ResponseEntity<com.hazem.worklink.services.AiSearchClient.MatchMissionResponse> matchMission(
             Authentication authentication,

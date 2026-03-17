@@ -105,6 +105,12 @@
             <version>4.0.0</version>
         </dependency>
 
+        <!-- Spring WebSocket (STOMP) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
         <!-- Apache PDFBox - PDF generation -->
         <dependency>
             <groupId>org.apache.pdfbox</groupId>

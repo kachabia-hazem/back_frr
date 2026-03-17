@@ -60,6 +60,7 @@ public class ContractService {
     private final CompanyRepository companyRepository;
     private final NotificationService notificationService;
     private final ActiveMissionService activeMissionService;
+    private final MessageService messageService;
 
     @Value("${file.upload-dir:uploads}")
     private String uploadDir;
@@ -168,6 +169,9 @@ public class ContractService {
 
         // Trigger active mission creation now that both parties have signed
         activeMissionService.createFromContract(saved);
+
+        // Auto-create messaging conversation so both parties can chat immediately
+        messageService.ensureConversationFromContract(saved.getCompanyId(), saved.getFreelancerId());
 
         // Notify company that freelancer signed
         Company company = companyRepository.findById(contract.getCompanyId()).orElse(null);

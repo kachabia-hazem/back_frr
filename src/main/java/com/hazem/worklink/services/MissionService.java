@@ -259,6 +259,40 @@ public class MissionService {
 
     public record AiMissionResult(MissionResponse mission, double score) {}
 
+    public List<AiMissionResult> getRecommendedMissions(String freelancerEmail) {
+        com.hazem.worklink.models.Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found"));
+
+        List<AiSearchClient.AiSearchResult> aiResults = aiSearchClient.recommendMissions(freelancer);
+        if (aiResults.isEmpty()) return List.of();
+
+        List<String> ids = aiResults.stream()
+                .map(AiSearchClient.AiSearchResult::missionId)
+                .collect(Collectors.toList());
+
+        Map<String, Mission> missionMap = missionRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Mission::getId, m -> m));
+
+        Map<String, Company> companyMap = missionMap.values().stream()
+                .map(Mission::getCompanyId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toMap(
+                        id -> id,
+                        id -> companyRepository.findById(id).orElse(null),
+                        (a, b) -> a
+                ));
+
+        return aiResults.stream()
+                .filter(r -> missionMap.containsKey(r.missionId()))
+                .map(r -> {
+                    Mission m = missionMap.get(r.missionId());
+                    Company c = companyMap.get(m.getCompanyId());
+                    return new AiMissionResult(MissionResponse.from(m, c), r.score());
+                })
+                .collect(Collectors.toList());
+    }
+
     public AiSearchClient.MatchMissionResponse matchMission(String freelancerEmail, String missionId) {
         com.hazem.worklink.models.Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found"));

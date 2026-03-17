@@ -12,4 +12,5 @@ public interface ContractRepository extends MongoRepository<Contract, String> {
     List<Contract> findByCompanyIdOrderByCreatedAtDesc(String companyId);
     boolean existsByJobIdAndFreelancerId(String jobId, String freelancerId);
     List<Contract> findByStatusAndCreatedAtBefore(ContractStatus status, LocalDateTime threshold);
+    boolean existsByCompanyIdAndFreelancerIdAndStatus(String companyId, String freelancerId, ContractStatus status);
 }

@@ -117,6 +117,40 @@ public class AiSearchClient {
         }
     }
 
+    // ── Recommandation de missions pour un freelancer ─────────────────────────
+    @SuppressWarnings("unchecked")
+    public List<AiSearchResult> recommendMissions(com.hazem.worklink.models.Freelancer freelancer) {
+        try {
+            Map<String, Object> body = new HashMap<>();
+            body.put("id",                freelancer.getId());
+            body.put("currentPosition",   nullSafe(freelancer.getCurrentPosition()));
+            body.put("skills",            freelancer.getSkills() != null ? freelancer.getSkills() : List.of());
+            body.put("bio",               nullSafe(freelancer.getBio()));
+            body.put("yearsOfExperience", freelancer.getYearsOfExperience());
+            body.put("profileTypes",      freelancer.getProfileTypes() != null
+                    ? freelancer.getProfileTypes().stream().map(Enum::name).collect(Collectors.toList())
+                    : List.of());
+            body.put("location",          nullSafe(freelancer.getLocation()));
+            body.put("city",              nullSafe(freelancer.getCity()));
+            body.put("country",           nullSafe(freelancer.getCountry()));
+
+            List<Map<String, Object>> response = restTemplate.postForObject(
+                    aiServiceUrl + "/recommend-missions", body, List.class);
+
+            if (response == null) return Collections.emptyList();
+
+            return response.stream()
+                    .map(r -> new AiSearchResult(
+                            (String) r.get("mission_id"),
+                            ((Number) r.get("score")).doubleValue()))
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("[AI-RECOMMEND] Error calling recommend-missions: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
     // ── Extraction CV via Ollama ──────────────────────────────────────────────
     @SuppressWarnings("unchecked")
     public Map<String, Object> extractCvData(MultipartFile file) {
