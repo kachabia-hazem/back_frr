@@ -125,12 +125,20 @@ public class ContractService {
         }
 
         // Notify freelancer
-        notificationService.sendContractGeneratedNotification(
-                freelancer.getId(), mission.getJobTitle(), company.getCompanyName(), saved.getId());
+        try {
+            notificationService.sendContractGeneratedNotification(
+                    freelancer.getId(), mission.getJobTitle(), company.getCompanyName(), saved.getId());
+        } catch (Exception e) {
+            log.error("Failed to send contract generated notification: {}", e.getMessage());
+        }
 
         // Notify company
-        notificationService.sendContractCreatedToCompanyNotification(
-                company.getId(), mission.getJobTitle(), freelancer.getFirstName() + " " + freelancer.getLastName());
+        try {
+            notificationService.sendContractCreatedToCompanyNotification(
+                    company.getId(), mission.getJobTitle(), freelancer.getFirstName() + " " + freelancer.getLastName());
+        } catch (Exception e) {
+            log.error("Failed to send contract created company notification: {}", e.getMessage());
+        }
 
         log.info("Contract generated: {} for mission {}", saved.getId(), mission.getJobTitle());
         return saved;
@@ -167,24 +175,41 @@ public class ContractService {
 
         Contract saved = contractRepository.save(contract);
 
-        // Trigger active mission creation now that both parties have signed
-        activeMissionService.createFromContract(saved);
-
-        // Auto-create messaging conversation so both parties can chat immediately
-        messageService.ensureConversationFromContract(saved.getCompanyId(), saved.getFreelancerId());
-
-        // Notify company that freelancer signed
-        Company company = companyRepository.findById(contract.getCompanyId()).orElse(null);
-        if (company != null) {
-            notificationService.sendContractSignedNotification(
-                    company.getId(), contract.getMissionTitle(),
-                    contract.getFreelancerName(), contractId,
-                    saved.getSignedPdfUrl());
+        // Trigger active mission creation
+        try {
+            activeMissionService.createFromContract(saved);
+        } catch (Exception e) {
+            log.error("Failed to create active mission from contract {}: {}", saved.getId(), e.getMessage());
         }
 
-        // Notify freelancer with their signed contract
-        notificationService.sendContractSignedToFreelancerNotification(
-                freelancer.getId(), contract.getMissionTitle(), saved.getSignedPdfUrl());
+        // Create messaging conversation — isolated so any prior failure never blocks this
+        try {
+            messageService.ensureConversationFromContract(saved.getCompanyId(), saved.getFreelancerId());
+            log.info("Conversation ensured for company {} and freelancer {}", saved.getCompanyId(), saved.getFreelancerId());
+        } catch (Exception e) {
+            log.error("Failed to ensure conversation for contract {}: {}", saved.getId(), e.getMessage());
+        }
+
+        // Notify company that freelancer signed
+        try {
+            Company company = companyRepository.findById(contract.getCompanyId()).orElse(null);
+            if (company != null) {
+                notificationService.sendContractSignedNotification(
+                        company.getId(), contract.getMissionTitle(),
+                        contract.getFreelancerName(), contractId,
+                        saved.getSignedPdfUrl());
+            }
+        } catch (Exception e) {
+            log.error("Failed to send company notification for contract {}: {}", saved.getId(), e.getMessage());
+        }
+
+        // Notify freelancer
+        try {
+            notificationService.sendContractSignedToFreelancerNotification(
+                    freelancer.getId(), contract.getMissionTitle(), saved.getSignedPdfUrl());
+        } catch (Exception e) {
+            log.error("Failed to send freelancer notification for contract {}: {}", saved.getId(), e.getMessage());
+        }
 
         return ContractResponse.from(saved);
     }

@@ -9,4 +9,7 @@ import java.util.List;
 @Repository
 public interface MessageRepository extends MongoRepository<Message, String> {
     List<Message> findByConversationIdOrderByTimestampAsc(String conversationId);
+
+    List<Message> findByConversationIdAndSenderIdNotAndReadFalse(String conversationId, String senderId);
+    boolean existsByConversationIdAndSenderRole(String conversationId, String senderRole);
 }

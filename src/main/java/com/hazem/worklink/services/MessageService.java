@@ -142,6 +142,14 @@ public class MessageService {
         String senderId = resolveUserId(senderEmail, senderRole);
         Conversation conv = validateAccess(conversationId, senderId, senderRole);
 
+        // Freelancer can only reply after the company has sent the first message
+        if (senderRole == Role.FREELANCER) {
+            boolean companyHasStarted = messageRepository.existsByConversationIdAndSenderRole(conversationId, "COMPANY");
+            if (!companyHasStarted) {
+                throw new RuntimeException("The company must send the first message before you can reply");
+            }
+        }
+
         Message message = Message.builder()
                 .conversationId(conversationId)
                 .senderId(senderId)
@@ -188,6 +196,13 @@ public class MessageService {
     }
 
     public void markAsRead(String conversationId, String userId) {
+        // Mark all unread messages sent by the other party as read
+        List<Message> unread = messageRepository.findByConversationIdAndSenderIdNotAndReadFalse(conversationId, userId);
+        if (!unread.isEmpty()) {
+            unread.forEach(m -> m.setRead(true));
+            messageRepository.saveAll(unread);
+        }
+        // Reset unread count in conversation
         conversationRepository.findById(conversationId).ifPresent(conv -> {
             conv.getUnreadCount().put(userId, 0);
             conversationRepository.save(conv);
