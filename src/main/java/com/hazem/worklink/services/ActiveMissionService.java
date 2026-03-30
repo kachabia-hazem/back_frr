@@ -1,7 +1,9 @@
 package com.hazem.worklink.services;
 
 import com.hazem.worklink.dto.request.CreateTaskRequest;
+import com.hazem.worklink.dto.request.SubmitMissionRequest;
 import com.hazem.worklink.dto.request.UpdateTaskRequest;
+import com.hazem.worklink.dto.request.ValidateMissionRequest;
 import com.hazem.worklink.dto.response.GitActivityResponse;
 import com.hazem.worklink.exceptions.ResourceNotFoundException;
 import com.hazem.worklink.models.*;
@@ -13,8 +15,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -28,6 +32,8 @@ public class ActiveMissionService {
     private final CompanyRepository companyRepository;
     private final FileStorageService fileStorageService;
     private final GitHubService gitHubService;
+    private final NotificationService notificationService;
+    private final ReviewRepository reviewRepository;
 
     // ─── Create from contract (triggered after company signs) ────────────────
 
@@ -164,6 +170,11 @@ public class ActiveMissionService {
 
     // ─── Git Activity ─────────────────────────────────────────────────────────
 
+    public Map<String, Object> validateGitUrl(String missionId, String url, String email) {
+        getByIdForUser(missionId, email); // authorization check
+        return gitHubService.validateRepo(url);
+    }
+
     public ActiveMission setGitRepoUrl(String missionId, String repoUrl, String email) {
         ActiveMission mission = getByIdForUser(missionId, email);
         assertFreelancer(mission, email);
@@ -223,6 +234,113 @@ public class ActiveMissionService {
         return activeMissionRepository.save(mission);
     }
 
+    // ─── Mission Validation ───────────────────────────────────────────────────
+
+    /**
+     * Freelancer marks the mission as done and submits it for company validation.
+     * Can only be called when status is ACTIVE or PAUSED.
+     */
+    public ActiveMission submitMission(String missionId, SubmitMissionRequest req, String email) {
+        ActiveMission mission = getByIdForUser(missionId, email);
+        assertFreelancer(mission, email);
+
+        if (mission.getStatus() != ActiveMissionStatus.ACTIVE && mission.getStatus() != ActiveMissionStatus.PAUSED) {
+            throw new IllegalStateException("Mission must be ACTIVE or PAUSED to submit for validation");
+        }
+
+        mission.setStatus(ActiveMissionStatus.SUBMITTED);
+        mission.setSubmittedAt(LocalDateTime.now());
+        mission.setSubmittedNote(req.getNote());
+        ActiveMission saved = activeMissionRepository.save(mission);
+
+        // Notify the company
+        companyRepository.findById(mission.getCompanyId()).ifPresent(company -> {
+            String freelancerName = getFreelancerName(mission.getFreelancerId());
+            notificationService.sendMissionSubmittedNotification(
+                    company.getId(), mission.getTitle(), freelancerName, missionId);
+        });
+
+        return saved;
+    }
+
+    /**
+     * Company validates (approves or requests revision) a submitted mission.
+     * Can also be called after the end date even if freelancer hasn't submitted yet.
+     */
+    public ActiveMission validateMission(String missionId, ValidateMissionRequest req, String email) {
+        ActiveMission mission = getByIdForUser(missionId, email);
+        assertCompany(mission, email);
+
+        boolean isSubmitted = mission.getStatus() == ActiveMissionStatus.SUBMITTED;
+        boolean deadlinePassed = mission.getEndDate() != null && !LocalDate.now().isBefore(mission.getEndDate());
+
+        if (!isSubmitted && !deadlinePassed) {
+            throw new IllegalStateException(
+                    "Validation is only available after the mission end date or after the freelancer submits");
+        }
+
+        if (req.isApproved()) {
+            mission.setStatus(ActiveMissionStatus.COMPLETED);
+            mission.setValidatedAt(LocalDateTime.now());
+            mission.setValidationRating(req.getRating());
+        } else {
+            // Revision requested: reopen the mission
+            mission.setStatus(ActiveMissionStatus.ACTIVE);
+            mission.setSubmittedAt(null);
+            mission.setSubmittedNote(null);
+        }
+        mission.setValidationNote(req.getNote());
+        ActiveMission saved = activeMissionRepository.save(mission);
+
+        // If approved, create a review and update freelancer stats
+        if (req.isApproved() && req.getRating() != null && !reviewRepository.existsByMissionId(missionId)) {
+            companyRepository.findById(mission.getCompanyId()).ifPresent(company -> {
+                Review review = new Review();
+                review.setMissionId(missionId);
+                review.setFreelancerId(mission.getFreelancerId());
+                review.setCompanyId(mission.getCompanyId());
+                review.setCompanyName(company.getCompanyName());
+                review.setCompanyLogo(company.getCompanyLogo());
+                review.setRating(req.getRating());
+                review.setComment(req.getNote());
+                review.setCreatedAt(LocalDateTime.now());
+                reviewRepository.save(review);
+            });
+
+            freelancerRepository.findById(mission.getFreelancerId()).ifPresent(freelancer -> {
+                List<Review> allReviews = reviewRepository.findByFreelancerIdOrderByCreatedAtDesc(freelancer.getId());
+                double avg = allReviews.stream()
+                        .mapToInt(Review::getRating)
+                        .average()
+                        .orElse(0.0);
+                // Round to 1 decimal
+                freelancer.setRating(Math.round(avg * 10.0) / 10.0);
+                freelancer.setReviewCount(allReviews.size());
+                freelancer.setCompletedProjects(
+                        (freelancer.getCompletedProjects() == null ? 0 : freelancer.getCompletedProjects()) + 1);
+                freelancerRepository.save(freelancer);
+            });
+        }
+
+        // Notify the freelancer
+        String companyName = getCompanyName(mission.getCompanyId());
+        freelancerRepository.findById(mission.getFreelancerId()).ifPresent(freelancer ->
+                notificationService.sendMissionValidatedNotification(
+                        freelancer.getId(), mission.getTitle(), companyName, req.isApproved(), req.getNote(), missionId));
+
+        return saved;
+    }
+
+    /**
+     * Returns all missions submitted by freelancers that are awaiting this company's validation.
+     */
+    public List<ActiveMission> getPendingValidations(String email) {
+        Company company = companyRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found"));
+        return activeMissionRepository.findByCompanyIdAndStatusOrderBySubmittedAtDesc(
+                company.getId(), ActiveMissionStatus.SUBMITTED);
+    }
+
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private void assertFreelancer(ActiveMission mission, String email) {
@@ -231,5 +349,25 @@ public class ActiveMissionService {
         if (!isFreelancer) {
             throw new RuntimeException("Only the freelancer assigned to this mission can perform this action");
         }
+    }
+
+    private void assertCompany(ActiveMission mission, String email) {
+        boolean isCompany = companyRepository.findByEmail(email)
+                .map(c -> c.getId().equals(mission.getCompanyId())).orElse(false);
+        if (!isCompany) {
+            throw new RuntimeException("Only the company that owns this mission can perform this action");
+        }
+    }
+
+    private String getFreelancerName(String freelancerId) {
+        return freelancerRepository.findById(freelancerId)
+                .map(f -> f.getFirstName() + " " + f.getLastName())
+                .orElse("Freelancer");
+    }
+
+    private String getCompanyName(String companyId) {
+        return companyRepository.findById(companyId)
+                .map(Company::getCompanyName)
+                .orElse("Company");
     }
 }

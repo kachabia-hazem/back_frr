@@ -51,5 +51,9 @@ public class Contract {
     private String companySignatureImageBase64;
     private LocalDateTime companySignedAt;
 
+    // Rejection (by freelancer)
+    private LocalDateTime rejectedAt;
+    private String rejectionReason;
+
     private LocalDateTime createdAt;
 }

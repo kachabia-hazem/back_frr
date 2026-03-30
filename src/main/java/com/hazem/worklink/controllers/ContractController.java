@@ -56,6 +56,16 @@ public class ContractController {
         return ResponseEntity.ok(contractService.signContract(id, userDetails.getUsername(), signatureBase64));
     }
 
+    /** POST /api/contracts/{id}/reject — freelancer rejects the contract */
+    @PostMapping("/{id}/reject")
+    public ResponseEntity<ContractResponse> rejectContract(
+            @PathVariable String id,
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String reason = body.getOrDefault("reason", "");
+        return ResponseEntity.ok(contractService.rejectContract(id, userDetails.getUsername(), reason));
+    }
+
     /** POST /api/contracts/{id}/sign-company — company signs the contract */
     @PostMapping("/{id}/sign-company")
     public ResponseEntity<ContractResponse> signContractAsCompany(

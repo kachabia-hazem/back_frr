@@ -1,7 +1,9 @@
 package com.hazem.worklink.controllers;
 
 import com.hazem.worklink.dto.request.CreateTaskRequest;
+import com.hazem.worklink.dto.request.SubmitMissionRequest;
 import com.hazem.worklink.dto.request.UpdateTaskRequest;
+import com.hazem.worklink.dto.request.ValidateMissionRequest;
 import com.hazem.worklink.dto.response.GitActivityResponse;
 import com.hazem.worklink.models.ActiveMission;
 import com.hazem.worklink.models.Deliverable;
@@ -88,6 +90,13 @@ public class ActiveMissionController {
 
     // ─── Git Activity ─────────────────────────────────────────────────────────
 
+    @GetMapping("/{id}/git-validate")
+    public ResponseEntity<Map<String, Object>> validateGitUrl(@PathVariable String id,
+                                                               @RequestParam String url,
+                                                               Authentication auth) {
+        return ResponseEntity.ok(activeMissionService.validateGitUrl(id, url, auth.getName()));
+    }
+
     @PutMapping("/{id}/git-repo")
     public ResponseEntity<ActiveMission> setGitRepoUrl(@PathVariable String id,
                                                         @RequestBody Map<String, String> body,
@@ -109,5 +118,29 @@ public class ActiveMissionController {
                                                        Authentication auth) {
         ActiveMissionStatus status = ActiveMissionStatus.valueOf(body.get("status"));
         return ResponseEntity.ok(activeMissionService.updateStatus(id, status, auth.getName()));
+    }
+
+    // ─── Mission Validation ───────────────────────────────────────────────────
+
+    /** Freelancer: mark mission as done and request company validation */
+    @PostMapping("/{id}/submit")
+    public ResponseEntity<ActiveMission> submitMission(@PathVariable String id,
+                                                        @RequestBody SubmitMissionRequest req,
+                                                        Authentication auth) {
+        return ResponseEntity.ok(activeMissionService.submitMission(id, req, auth.getName()));
+    }
+
+    /** Company: approve or request revision for a submitted mission */
+    @PostMapping("/{id}/validate")
+    public ResponseEntity<ActiveMission> validateMission(@PathVariable String id,
+                                                          @RequestBody ValidateMissionRequest req,
+                                                          Authentication auth) {
+        return ResponseEntity.ok(activeMissionService.validateMission(id, req, auth.getName()));
+    }
+
+    /** Company: list missions pending validation */
+    @GetMapping("/pending-validation")
+    public ResponseEntity<List<ActiveMission>> getPendingValidations(Authentication auth) {
+        return ResponseEntity.ok(activeMissionService.getPendingValidations(auth.getName()));
     }
 }

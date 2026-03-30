@@ -23,7 +23,7 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final VerificationCodeRepository verificationCodeRepository;
 
-    @Value("${spring.mail.username}")
+    @Value("${spring.mail.from}")
     private String fromEmail;
 
     private static final SecureRandom RANDOM = new SecureRandom();

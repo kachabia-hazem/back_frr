@@ -4,7 +4,9 @@ import com.hazem.worklink.dto.request.UpdateCvDataRequest;
 import com.hazem.worklink.dto.request.UpdateFreelancerRequest;
 import com.hazem.worklink.exceptions.ResourceNotFoundException;
 import com.hazem.worklink.models.Freelancer;
+import com.hazem.worklink.models.Review;
 import com.hazem.worklink.repositories.FreelancerRepository;
+import com.hazem.worklink.repositories.ReviewRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +20,7 @@ public class FreelancerService {
 
     private final FreelancerRepository freelancerRepository;
     private final AiSearchClient aiSearchClient;
+    private final ReviewRepository reviewRepository;
 
     public Freelancer getFreelancerById(String id) {
         return freelancerRepository.findById(id)
@@ -173,4 +176,11 @@ public class FreelancerService {
     }
 
     public record AiFreelancerResult(Freelancer freelancer, double score) {}
+
+    public List<Review> getFreelancerReviews(String freelancerId) {
+        if (!freelancerRepository.existsById(freelancerId)) {
+            throw new ResourceNotFoundException("Freelancer not found with id: " + freelancerId);
+        }
+        return reviewRepository.findByFreelancerIdOrderByCreatedAtDesc(freelancerId);
+    }
 }

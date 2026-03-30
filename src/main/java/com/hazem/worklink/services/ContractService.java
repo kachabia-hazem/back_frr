@@ -256,6 +256,41 @@ public class ContractService {
         return ContractResponse.from(saved);
     }
 
+    // ─── Reject contract (by freelancer) ─────────────────────────────────────
+
+    public ContractResponse rejectContract(String contractId, String freelancerEmail, String reason) {
+        Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found"));
+
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + contractId));
+
+        if (!contract.getFreelancerId().equals(freelancer.getId())) {
+            throw new RuntimeException("Unauthorized: contract does not belong to this freelancer");
+        }
+        if (contract.getStatus() != ContractStatus.PENDING_SIGNATURE) {
+            throw new IllegalStateException("Only pending contracts can be rejected");
+        }
+
+        contract.setStatus(ContractStatus.REJECTED);
+        contract.setRejectedAt(LocalDateTime.now());
+        contract.setRejectionReason(reason);
+        Contract saved = contractRepository.save(contract);
+
+        // Notify the company
+        try {
+            notificationService.sendContractRejectedNotification(
+                    contract.getCompanyId(),
+                    contract.getMissionTitle(),
+                    contract.getFreelancerName(),
+                    reason);
+        } catch (Exception e) {
+            log.error("Failed to send contract rejected notification: {}", e.getMessage());
+        }
+
+        return ContractResponse.from(saved);
+    }
+
     // ─── Queries ─────────────────────────────────────────────────────────────
 
     public List<ContractResponse> getFreelancerContracts(String email) {

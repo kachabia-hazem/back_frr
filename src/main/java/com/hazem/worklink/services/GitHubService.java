@@ -51,6 +51,33 @@ public class GitHubService {
         return headers;
     }
 
+    /**
+     * Validates that a GitHub URL is well-formed AND that the repository is accessible via the API.
+     * Returns a map with "valid" (boolean) and "message" (string).
+     */
+    public Map<String, Object> validateRepo(String repoUrl) {
+        String[] ownerRepo;
+        try {
+            ownerRepo = parseRepoUrl(repoUrl);
+        } catch (IllegalArgumentException e) {
+            return Map.of("valid", false, "message", e.getMessage());
+        }
+        String owner = ownerRepo[0];
+        String repo  = ownerRepo[1];
+        try {
+            HttpEntity<Void> entity = new HttpEntity<>(buildHeaders());
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    GITHUB_API + "/repos/" + owner + "/" + repo,
+                    HttpMethod.GET, entity, Map.class);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return Map.of("valid", true, "message", "Repository found: " + owner + "/" + repo);
+            }
+            return Map.of("valid", false, "message", "Repository not accessible");
+        } catch (Exception e) {
+            return Map.of("valid", false, "message", "Repository not found or not accessible: " + owner + "/" + repo);
+        }
+    }
+
     public GitActivityResponse fetchGitActivity(String repoUrl) {
         String[] ownerRepo = parseRepoUrl(repoUrl);
         String owner = ownerRepo[0];

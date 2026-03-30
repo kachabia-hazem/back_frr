@@ -3,6 +3,7 @@ package com.hazem.worklink.controllers;
 import com.hazem.worklink.dto.request.UpdateCvDataRequest;
 import com.hazem.worklink.dto.request.UpdateFreelancerRequest;
 import com.hazem.worklink.models.Freelancer;
+import com.hazem.worklink.models.Review;
 import com.hazem.worklink.services.AiSearchClient;
 import com.hazem.worklink.services.FreelancerService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,11 @@ public class FreelancerController {
     public ResponseEntity<Freelancer> getFreelancerById(@PathVariable String id) {
         Freelancer freelancer = freelancerService.getFreelancerById(id);
         return ResponseEntity.ok(freelancer);
+    }
+
+    @GetMapping("/public/{id}/reviews")
+    public ResponseEntity<java.util.List<Review>> getFreelancerReviews(@PathVariable String id) {
+        return ResponseEntity.ok(freelancerService.getFreelancerReviews(id));
     }
 
     @PostMapping("/public/{id}/view")

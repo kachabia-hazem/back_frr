@@ -37,10 +37,13 @@ public class NotificationService {
             NotificationType.CONTRACT_GENERATED,
             NotificationType.CONTRACT_SIGNED,
             NotificationType.CONTRACT_SIGNATURE_REMINDER,
+            NotificationType.MISSION_VALIDATED,
             // Company
             NotificationType.COMPANY_WELCOME,
             NotificationType.APPLICATION_RECEIVED,
-            NotificationType.PENDING_APPLICATIONS_REMINDER
+            NotificationType.PENDING_APPLICATIONS_REMINDER,
+            NotificationType.MISSION_SUBMITTED,
+            NotificationType.CONTRACT_REJECTED
     );
 
     // ─── Create helpers ────────────────────────────────────────────────────────
@@ -283,6 +286,20 @@ public class NotificationService {
                 "WorkLink", null, "/freelancer-contracts");
     }
 
+    /** Contract 5b – Sent to company when freelancer rejects the contract */
+    public void sendContractRejectedNotification(String companyId, String missionTitle, String freelancerName, String reason) {
+        String message = String.format(
+                "%s has rejected the contract for the mission \"%s\".\n%s\n" +
+                "You can review the application and generate a new contract if needed.",
+                freelancerName, missionTitle,
+                (reason != null && !reason.isBlank()) ? "Reason: " + reason : "No reason provided.");
+
+        build(companyId, NotificationType.CONTRACT_REJECTED,
+                "Contract Rejected",
+                message,
+                freelancerName, null, "/company-contracts");
+    }
+
     /** Contract 5 – Reminder sent to freelancer 3 days after contract creation if still unsigned */
     public void sendContractSignatureReminderNotification(String freelancerId, String missionTitle, String companyName) {
         String message = String.format(
@@ -295,6 +312,42 @@ public class NotificationService {
                 "Contract Signature Reminder \u23F0",
                 message,
                 "WorkLink", null, "/freelancer-contracts");
+    }
+
+    /** Mission Validation 1 – Sent to company when freelancer submits work for validation */
+    public void sendMissionSubmittedNotification(String companyId, String missionTitle, String freelancerName, String missionId) {
+        String message = String.format(
+                "%s has completed and submitted the mission \"%s\" for your review.\n" +
+                "Please check the deliverables and Kanban board, then approve or request revisions in Mission Tracking.",
+                freelancerName, missionTitle);
+
+        build(companyId, NotificationType.MISSION_SUBMITTED,
+                "Mission Submitted for Validation",
+                message,
+                freelancerName, null, "/company-mission-view/" + missionId);
+    }
+
+    /** Mission Validation 2 – Sent to freelancer when company validates (approves or requests revision) */
+    public void sendMissionValidatedNotification(String freelancerId, String missionTitle, String companyName,
+                                                  boolean approved, String note, String missionId) {
+        String title = approved ? "Mission Approved \u2705" : "Revision Requested \uD83D\uDD04";
+        String message;
+        if (approved) {
+            message = String.format(
+                    "Congratulations! %s has reviewed and approved your work on the mission \"%s\".\n" +
+                    (note != null && !note.isBlank() ? "Company feedback: \"%s\"" : "Well done — the mission is now marked as completed."),
+                    companyName, missionTitle, note);
+        } else {
+            message = String.format(
+                    "%s has reviewed your submission for the mission \"%s\" and requested revisions.\n" +
+                    (note != null && !note.isBlank() ? "Feedback: \"%s\"\n\n" : "") +
+                    "The mission is now active again. Please make the necessary changes and resubmit when ready.",
+                    companyName, missionTitle, note);
+        }
+
+        build(freelancerId, NotificationType.MISSION_VALIDATED,
+                title, message,
+                companyName, null, "/active-mission/" + missionId);
     }
 
     /** Company Case 5 – Sent when a mission is closed */

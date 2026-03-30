@@ -70,6 +70,8 @@ public class Freelancer extends User {
 
     private Integer completedProjects;
 
+    private Integer reviewCount = 0;
+
     // Card customization
     private String cardBackground;
 

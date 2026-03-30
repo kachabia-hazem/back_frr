@@ -28,6 +28,8 @@ public class ContractResponse {
     private String signedPdfUrl;
     private LocalDateTime signedAt;
     private LocalDateTime companySignedAt;
+    private LocalDateTime rejectedAt;
+    private String rejectionReason;
     private LocalDateTime createdAt;
 
     public static ContractResponse from(Contract c) {
@@ -50,6 +52,8 @@ public class ContractResponse {
         r.setSignedPdfUrl(c.getSignedPdfUrl());
         r.setSignedAt(c.getSignedAt());
         r.setCompanySignedAt(c.getCompanySignedAt());
+        r.setRejectedAt(c.getRejectedAt());
+        r.setRejectionReason(c.getRejectionReason());
         r.setCreatedAt(c.getCreatedAt());
         return r;
     }

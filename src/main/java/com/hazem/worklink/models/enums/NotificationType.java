@@ -21,5 +21,10 @@ public enum NotificationType {
     // ── Contract notifications ────────────────────────────────────────
     CONTRACT_GENERATED,            // freelancer: a contract is ready to sign
     CONTRACT_SIGNED,               // company: freelancer signed the contract
-    CONTRACT_SIGNATURE_REMINDER    // freelancer: reminder to sign after 3 days
+    CONTRACT_SIGNATURE_REMINDER,   // freelancer: reminder to sign after 3 days
+    CONTRACT_REJECTED,             // company: freelancer rejected the contract
+
+    // ── Mission validation notifications ─────────────────────────────
+    MISSION_SUBMITTED,             // company: freelancer submitted work for validation
+    MISSION_VALIDATED              // freelancer: company approved or requested revision
 }

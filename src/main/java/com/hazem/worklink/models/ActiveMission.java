@@ -40,4 +40,13 @@ public class ActiveMission {
     private String gitLastCommitMessage;
 
     private LocalDateTime createdAt;
+
+    // ── Submission (set by Freelancer when work is done) ──────────────────────
+    private LocalDateTime submittedAt;
+    private String submittedNote;
+
+    // ── Validation (set by Company after reviewing submission) ────────────────
+    private LocalDateTime validatedAt;
+    private String validationNote;
+    private Integer validationRating; // 1–5 stars
 }
