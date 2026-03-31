@@ -143,4 +143,11 @@ public class ActiveMissionController {
     public ResponseEntity<List<ActiveMission>> getPendingValidations(Authentication auth) {
         return ResponseEntity.ok(activeMissionService.getPendingValidations(auth.getName()));
     }
+
+    /** Freelancer: remove a completed mission from history */
+    @DeleteMapping("/{id}/history")
+    public ResponseEntity<Void> deleteFromHistory(@PathVariable String id, Authentication auth) {
+        activeMissionService.deleteFromHistory(id, auth.getName());
+        return ResponseEntity.noContent().build();
+    }
 }

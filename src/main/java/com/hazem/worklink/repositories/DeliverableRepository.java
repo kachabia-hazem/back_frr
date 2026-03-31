@@ -8,4 +8,6 @@ import java.util.List;
 public interface DeliverableRepository extends MongoRepository<Deliverable, String> {
 
     List<Deliverable> findByMissionIdOrderByUploadedAtDesc(String missionId);
+
+    void deleteByMissionId(String missionId);
 }

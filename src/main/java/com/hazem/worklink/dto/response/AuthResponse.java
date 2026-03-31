@@ -13,6 +13,8 @@ public class AuthResponse {
 
     private String token;
 
+    private String refreshToken;
+
     private String email;
 
     private Role role;
@@ -28,6 +30,18 @@ public class AuthResponse {
     // Existing 5-arg constructor for backwards compatibility
     public AuthResponse(String token, String email, Role role, String id, String message) {
         this.token = token;
+        this.email = email;
+        this.role = role;
+        this.id = id;
+        this.message = message;
+        this.needsRegistration = false;
+        this.oauthProfile = null;
+    }
+
+    // Constructor with refresh token
+    public AuthResponse(String token, String refreshToken, String email, Role role, String id, String message) {
+        this.token = token;
+        this.refreshToken = refreshToken;
         this.email = email;
         this.role = role;
         this.id = id;

@@ -5,6 +5,7 @@ import com.hazem.worklink.dto.response.AuthResponse;
 import com.hazem.worklink.exceptions.EmailAlreadyExistsException;
 import com.hazem.worklink.models.*;
 import com.hazem.worklink.models.enums.Role;
+import com.hazem.worklink.models.RefreshToken;
 import com.hazem.worklink.repositories.*;
 import com.hazem.worklink.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class AuthService {
     private final EmailService emailService;
     private final NotificationService notificationService;
     private final AiSearchClient aiSearchClient;
+    private final RefreshTokenService refreshTokenService;
 
     // Register Freelancer
     public AuthResponse registerFreelancer(RegisterFreelancerRequest request) {
@@ -66,15 +68,17 @@ public class AuthService {
         // Send welcome notification
         notificationService.sendWelcomeNotification(savedFreelancer.getId());
 
-        // Générer le token
+        // Générer les tokens
         String token = jwtUtil.generateToken(
                 savedFreelancer.getEmail(),
                 savedFreelancer.getRole(),
                 savedFreelancer.getId()
         );
+        String refreshToken = refreshTokenService.createRefreshToken(savedFreelancer.getEmail()).getToken();
 
         return new AuthResponse(
                 token,
+                refreshToken,
                 savedFreelancer.getEmail(),
                 savedFreelancer.getRole(),
                 savedFreelancer.getId(),
@@ -119,15 +123,17 @@ public class AuthService {
         // Send welcome notification
         notificationService.sendCompanyWelcomeNotification(savedCompany.getId());
 
-        // Générer le token
+        // Générer les tokens
         String token = jwtUtil.generateToken(
                 savedCompany.getEmail(),
                 savedCompany.getRole(),
                 savedCompany.getId()
         );
+        String refreshToken = refreshTokenService.createRefreshToken(savedCompany.getEmail()).getToken();
 
         return new AuthResponse(
                 token,
+                refreshToken,
                 savedCompany.getEmail(),
                 savedCompany.getRole(),
                 savedCompany.getId(),
@@ -163,15 +169,17 @@ public class AuthService {
 
         Admin savedAdmin = adminRepository.save(admin);
 
-        // Générer le token
+        // Générer les tokens
         String token = jwtUtil.generateToken(
                 savedAdmin.getEmail(),
                 savedAdmin.getRole(),
                 savedAdmin.getId()
         );
+        String refreshToken = refreshTokenService.createRefreshToken(savedAdmin.getEmail()).getToken();
 
         return new AuthResponse(
                 token,
+                refreshToken,
                 savedAdmin.getEmail(),
                 savedAdmin.getRole(),
                 savedAdmin.getId(),
@@ -224,16 +232,54 @@ public class AuthService {
             throw new RuntimeException("Utilisateur non trouvé");
         }
 
-        // Générer le token
+        // Générer les tokens
         String token = jwtUtil.generateToken(email, role, userId);
+        String refreshToken = refreshTokenService.createRefreshToken(email).getToken();
 
         return new AuthResponse(
                 token,
+                refreshToken,
                 email,
                 role,
                 userId,
                 "Connexion réussie"
         );
+    }
+
+    // Refresh Access Token
+    public AuthResponse refreshAccessToken(String refreshTokenValue) {
+        RefreshToken refreshToken = refreshTokenService.findByToken(refreshTokenValue)
+                .orElseThrow(() -> new RuntimeException("Refresh token not found"));
+
+        if (refreshTokenService.isExpired(refreshToken)) {
+            refreshTokenService.deleteByEmail(refreshToken.getEmail());
+            throw new RuntimeException("Refresh token expired — please log in again");
+        }
+
+        String email = refreshToken.getEmail();
+        String userId = null;
+        Role role = null;
+
+        var freelancer = freelancerRepository.findByEmail(email);
+        if (freelancer.isPresent()) { userId = freelancer.get().getId(); role = freelancer.get().getRole(); }
+
+        if (userId == null) {
+            var company = companyRepository.findByEmail(email);
+            if (company.isPresent()) { userId = company.get().getId(); role = company.get().getRole(); }
+        }
+
+        if (userId == null) {
+            var admin = adminRepository.findByEmail(email);
+            if (admin.isPresent()) { userId = admin.get().getId(); role = admin.get().getRole(); }
+        }
+
+        if (userId == null) throw new RuntimeException("User not found");
+
+        String newAccessToken = jwtUtil.generateToken(email, role, userId);
+        // Rotate refresh token for security
+        String newRefreshToken = refreshTokenService.createRefreshToken(email).getToken();
+
+        return new AuthResponse(newAccessToken, newRefreshToken, email, role, userId, "Token refreshed");
     }
 
     // Reset Password
