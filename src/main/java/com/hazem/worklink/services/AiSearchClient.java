@@ -85,9 +85,11 @@ public class AiSearchClient {
             body.put("profileTypes",      freelancer.getProfileTypes() != null
                     ? freelancer.getProfileTypes().stream().map(Enum::name).collect(Collectors.toList())
                     : List.of());
-            body.put("location",          nullSafe(freelancer.getLocation()));
-            body.put("city",              nullSafe(freelancer.getCity()));
-            body.put("country",           nullSafe(freelancer.getCountry()));
+            body.put("location",           nullSafe(freelancer.getLocation()));
+            body.put("city",               nullSafe(freelancer.getCity()));
+            body.put("country",            nullSafe(freelancer.getCountry()));
+            body.put("completedProjects",  freelancer.getCompletedProjects());
+            body.put("rating",             freelancer.getRating());
             restTemplate.postForObject(aiServiceUrl + "/index-freelancer", body, Map.class);
             log.info("[AI-INDEX] Freelancer indexed: {}", freelancer.getId());
         } catch (Exception e) {

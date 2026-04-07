@@ -11,6 +11,7 @@ import java.util.List;
 @Repository
 public interface MissionRepository extends MongoRepository<Mission, String> {
     List<Mission> findByCompanyId(String companyId);
+    long countByCompanyId(String companyId);
     List<Mission> findByStatus(MissionStatus status);
     List<Mission> findByCompanyIdAndStatus(String companyId, MissionStatus status);
     List<Mission> findByStatusAndApplicationDeadlineBefore(MissionStatus status, LocalDate date);

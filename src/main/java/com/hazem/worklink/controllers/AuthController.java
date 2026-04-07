@@ -56,6 +56,13 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Verification code sent"));
     }
 
+    @PostMapping("/email/send-reset-code")
+    public ResponseEntity<Map<String, String>> sendPasswordResetCode(
+            @Valid @RequestBody SendVerificationCodeRequest request) {
+        emailService.sendPasswordResetCode(request.getEmail());
+        return ResponseEntity.ok(Map.of("message", "Password reset code sent"));
+    }
+
     @PostMapping("/email/verify-code")
     public ResponseEntity<Map<String, Object>> verifyCode(
             @Valid @RequestBody VerifyCodeRequest request) {

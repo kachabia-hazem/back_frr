@@ -147,6 +147,10 @@ public class MissionService {
         return missionRepository.findByCompanyId(company.getId());
     }
 
+    public long countMissionsByCompanyId(String companyId) {
+        return missionRepository.countByCompanyId(companyId);
+    }
+
     public List<Mission> getAllMissions() {
         return missionRepository.findAll();
     }

@@ -46,6 +46,12 @@ public class MissionController {
         return ResponseEntity.ok(missionService.aiSearch(prompt, topK));
     }
 
+    @GetMapping("/public/company/{companyId}/count")
+    public ResponseEntity<java.util.Map<String, Long>> getMissionCountByCompany(@PathVariable String companyId) {
+        long count = missionService.countMissionsByCompanyId(companyId);
+        return ResponseEntity.ok(java.util.Map.of("count", count));
+    }
+
     @GetMapping("/public/{id}")
     public ResponseEntity<MissionResponse> getMissionById(@PathVariable String id) {
         return ResponseEntity.ok(missionService.getMissionByIdWithCompany(id));
