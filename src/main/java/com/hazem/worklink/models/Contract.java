@@ -26,6 +26,7 @@ public class Contract {
     // Denormalized display info
     private String freelancerName;
     private String freelancerEmail;
+    private String freelancerPhoto;
     private String companyName;
     private String companyEmail;
     private String missionTitle;

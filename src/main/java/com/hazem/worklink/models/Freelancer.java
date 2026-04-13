@@ -90,4 +90,7 @@ public class Freelancer extends User {
     private List<Certification> certifications = new ArrayList<>();
 
     private List<WorkExperience> workExperience = new ArrayList<>();
+
+    // ── Saved (bookmarked) public mission IDs — ordered most-recent first ──────
+    private List<String> savedMissionIds = new ArrayList<>();
 }

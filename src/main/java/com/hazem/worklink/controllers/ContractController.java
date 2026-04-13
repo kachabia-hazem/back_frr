@@ -79,6 +79,15 @@ public class ContractController {
         return ResponseEntity.ok(contractService.signContractAsCompany(id, userDetails.getUsername(), signatureBase64));
     }
 
+    /** DELETE /api/contracts/{id} — freelancer deletes a contract from their list */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteContract(
+            @PathVariable String id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        contractService.deleteContract(id, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
+
     /** GET /api/files/contracts/{fileName} — serve contract PDF file */
     @GetMapping("/files/{fileName:.+}")
     public ResponseEntity<Resource> downloadContractFile(@PathVariable String fileName) {

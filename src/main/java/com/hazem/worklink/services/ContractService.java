@@ -291,6 +291,49 @@ public class ContractService {
         return ContractResponse.from(saved);
     }
 
+    // ─── Extend deadline (called by company after deadline is missed) ────────
+
+    public ContractResponse extendContract(String contractId, LocalDate newEndDate, Double adjustedSalary) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found: " + contractId));
+
+        if (newEndDate != null) contract.setEndDate(newEndDate);
+        if (adjustedSalary != null) contract.setSalary(adjustedSalary);
+
+        // Reset to pending so freelancer must sign again
+        contract.setStatus(ContractStatus.PENDING_SIGNATURE);
+        contract.setSignedAt(null);
+        contract.setSignatureImageBase64(null);
+        contract.setSignedPdfUrl(null);
+        // Update createdAt so the contract appears first in the freelancer's list
+        contract.setCreatedAt(LocalDateTime.now());
+
+        Contract saved = contractRepository.save(contract);
+
+        // Regenerate unsigned PDF (company auto-signature is still there)
+        try {
+            String pdfUrl = generateContractPdf(saved, true);
+            saved.setPdfUrl(pdfUrl);
+            saved = contractRepository.save(saved);
+        } catch (Exception e) {
+            log.error("Failed to regenerate contract PDF for extension: {}", e.getMessage());
+        }
+
+        // Notify freelancer of the updated contract
+        try {
+            Freelancer freelancer = freelancerRepository.findById(saved.getFreelancerId()).orElse(null);
+            Company company = companyRepository.findById(saved.getCompanyId()).orElse(null);
+            if (freelancer != null && company != null) {
+                notificationService.sendContractGeneratedNotification(
+                        freelancer.getId(), saved.getMissionTitle(), company.getCompanyName(), saved.getId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to send deadline extension notification: {}", e.getMessage());
+        }
+
+        return ContractResponse.from(saved);
+    }
+
     // ─── Queries ─────────────────────────────────────────────────────────────
 
     public List<ContractResponse> getFreelancerContracts(String email) {
@@ -322,6 +365,17 @@ public class ContractService {
         }
 
         return ContractResponse.from(contract);
+    }
+
+    public void deleteContract(String contractId, String freelancerEmail) {
+        Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found"));
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+        if (!contract.getFreelancerId().equals(freelancer.getId())) {
+            throw new RuntimeException("Unauthorized");
+        }
+        contractRepository.deleteById(contractId);
     }
 
     // ─── File serving ─────────────────────────────────────────────────────────

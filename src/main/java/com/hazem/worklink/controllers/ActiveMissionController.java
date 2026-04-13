@@ -1,6 +1,7 @@
 package com.hazem.worklink.controllers;
 
 import com.hazem.worklink.dto.request.CreateTaskRequest;
+import com.hazem.worklink.dto.request.ExtendDeadlineRequest;
 import com.hazem.worklink.dto.request.SubmitMissionRequest;
 import com.hazem.worklink.dto.request.UpdateTaskRequest;
 import com.hazem.worklink.dto.request.ValidateMissionRequest;
@@ -10,6 +11,7 @@ import com.hazem.worklink.models.Deliverable;
 import com.hazem.worklink.models.Task;
 import com.hazem.worklink.models.enums.ActiveMissionStatus;
 import com.hazem.worklink.services.ActiveMissionService;
+import com.hazem.worklink.services.ContractService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -25,6 +27,7 @@ import java.util.Map;
 public class ActiveMissionController {
 
     private final ActiveMissionService activeMissionService;
+    private final ContractService contractService;
 
     // ─── Mission listings ─────────────────────────────────────────────────────
 
@@ -149,5 +152,21 @@ public class ActiveMissionController {
     public ResponseEntity<Void> deleteFromHistory(@PathVariable String id, Authentication auth) {
         activeMissionService.deleteFromHistory(id, auth.getName());
         return ResponseEntity.noContent().build();
+    }
+
+    /** Company: extend deadline of an overdue ACTIVE mission and reset contract for re-signing */
+    @PostMapping("/{id}/extend")
+    public ResponseEntity<ActiveMission> extendDeadline(@PathVariable String id,
+                                                         @RequestBody ExtendDeadlineRequest req,
+                                                         Authentication auth) {
+        // 1. Update mission end date
+        ActiveMission updated = activeMissionService.extendMissionDeadline(id, req.getNewEndDate(), auth.getName());
+
+        // 2. Reset the linked contract so freelancer must sign again
+        if (updated.getContractId() != null) {
+            contractService.extendContract(updated.getContractId(), req.getNewEndDate(), req.getAdjustedPayment());
+        }
+
+        return ResponseEntity.ok(updated);
     }
 }

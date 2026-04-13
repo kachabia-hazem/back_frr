@@ -38,10 +38,19 @@ public class ActiveMissionService {
     // ─── Create from contract (triggered after company signs) ────────────────
 
     public ActiveMission createFromContract(Contract contract) {
-        // Avoid duplicates
+        // If mission already exists (e.g. after a deadline extension + re-sign), reopen it
         if (activeMissionRepository.findByContractId(contract.getId()).isPresent()) {
-            log.info("ActiveMission already exists for contract {}", contract.getId());
-            return activeMissionRepository.findByContractId(contract.getId()).get();
+            ActiveMission existing = activeMissionRepository.findByContractId(contract.getId()).get();
+            if (existing.getStatus() == ActiveMissionStatus.ACTIVE) {
+                // Update end date and salary in case they changed
+                existing.setEndDate(contract.getEndDate());
+                if (contract.getSalary() != null) existing.setSalary(contract.getSalary());
+                ActiveMission saved = activeMissionRepository.save(existing);
+                log.info("ActiveMission {} updated with new endDate from contract {}", saved.getId(), contract.getId());
+                return saved;
+            }
+            log.info("ActiveMission already exists for contract {} with status {}", contract.getId(), existing.getStatus());
+            return existing;
         }
 
         ActiveMission mission = new ActiveMission();
@@ -54,6 +63,7 @@ public class ActiveMissionService {
         mission.setProgress(0);
         mission.setStartDate(contract.getStartDate());
         mission.setEndDate(contract.getEndDate());
+        mission.setSalary(contract.getSalary());
         mission.setCreatedAt(LocalDateTime.now());
 
         ActiveMission saved = activeMissionRepository.save(mission);
@@ -328,6 +338,27 @@ public class ActiveMissionService {
                 notificationService.sendMissionValidatedNotification(
                         freelancer.getId(), mission.getTitle(), companyName, req.isApproved(), req.getNote(), missionId));
 
+        return saved;
+    }
+
+    /**
+     * Company extends the deadline for an overdue ACTIVE mission.
+     * Returns the updated mission.
+     */
+    public ActiveMission extendMissionDeadline(String missionId, LocalDate newEndDate, String companyEmail) {
+        ActiveMission mission = getByIdForUser(missionId, companyEmail);
+        assertCompany(mission, companyEmail);
+
+        if (mission.getStatus() != ActiveMissionStatus.ACTIVE) {
+            throw new IllegalStateException("Only ACTIVE missions can have their deadline extended");
+        }
+        if (newEndDate == null) {
+            throw new IllegalArgumentException("New end date is required");
+        }
+
+        mission.setEndDate(newEndDate);
+        ActiveMission saved = activeMissionRepository.save(mission);
+        log.info("Mission {} deadline extended to {} by company", missionId, newEndDate);
         return saved;
     }
 

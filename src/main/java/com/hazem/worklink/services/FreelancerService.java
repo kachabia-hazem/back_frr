@@ -2,16 +2,22 @@ package com.hazem.worklink.services;
 
 import com.hazem.worklink.dto.request.UpdateCvDataRequest;
 import com.hazem.worklink.dto.request.UpdateFreelancerRequest;
+import com.hazem.worklink.dto.response.MissionResponse;
 import com.hazem.worklink.exceptions.ResourceNotFoundException;
+import com.hazem.worklink.models.Company;
 import com.hazem.worklink.models.Freelancer;
 import com.hazem.worklink.models.Review;
+import com.hazem.worklink.repositories.CompanyRepository;
 import com.hazem.worklink.repositories.FreelancerRepository;
+import com.hazem.worklink.repositories.MissionRepository;
 import com.hazem.worklink.repositories.ReviewRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,6 +27,8 @@ public class FreelancerService {
     private final FreelancerRepository freelancerRepository;
     private final AiSearchClient aiSearchClient;
     private final ReviewRepository reviewRepository;
+    private final MissionRepository missionRepository;
+    private final CompanyRepository companyRepository;
 
     public Freelancer getFreelancerById(String id) {
         return freelancerRepository.findById(id)
@@ -182,5 +190,50 @@ public class FreelancerService {
             throw new ResourceNotFoundException("Freelancer not found with id: " + freelancerId);
         }
         return reviewRepository.findByFreelancerIdOrderByCreatedAtDesc(freelancerId);
+    }
+
+    // ─── Saved Missions ───────────────────────────────────────────────────────
+
+    /** Returns the list of saved mission IDs (most-recent first) for the authenticated freelancer. */
+    public List<String> getSavedMissionIds(String email) {
+        Freelancer freelancer = getFreelancerByEmail(email);
+        return freelancer.getSavedMissionIds() != null
+                ? freelancer.getSavedMissionIds()
+                : new ArrayList<>();
+    }
+
+    /**
+     * Toggle save/unsave for a given mission.
+     * New saves are inserted at position 0 so the list stays most-recent first.
+     * Returns the updated list of saved IDs.
+     */
+    public List<String> toggleSavedMission(String email, String missionId) {
+        Freelancer freelancer = getFreelancerByEmail(email);
+        if (freelancer.getSavedMissionIds() == null) {
+            freelancer.setSavedMissionIds(new ArrayList<>());
+        }
+        List<String> ids = freelancer.getSavedMissionIds();
+        if (ids.contains(missionId)) {
+            ids.remove(missionId);
+        } else {
+            ids.add(0, missionId); // most recent first
+        }
+        freelancerRepository.save(freelancer);
+        return ids;
+    }
+
+    /** Returns full MissionResponse objects for all saved missions (most-recent first). */
+    public List<MissionResponse> getSavedMissions(String email) {
+        List<String> ids = getSavedMissionIds(email);
+        if (ids.isEmpty()) return List.of();
+        return ids.stream()
+                .map(id -> missionRepository.findById(id))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(m -> {
+                    Company company = companyRepository.findById(m.getCompanyId()).orElse(null);
+                    return MissionResponse.from(m, company);
+                })
+                .collect(Collectors.toList());
     }
 }

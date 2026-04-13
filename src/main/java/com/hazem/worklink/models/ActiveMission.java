@@ -31,6 +31,7 @@ public class ActiveMission {
 
     private LocalDate startDate;
     private LocalDate endDate;
+    private Double salary;
 
     // Git Activity (auto-fetched from GitHub API)
     private String gitRepositoryUrl;

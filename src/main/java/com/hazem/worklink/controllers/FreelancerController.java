@@ -2,6 +2,7 @@ package com.hazem.worklink.controllers;
 
 import com.hazem.worklink.dto.request.UpdateCvDataRequest;
 import com.hazem.worklink.dto.request.UpdateFreelancerRequest;
+import com.hazem.worklink.dto.response.MissionResponse;
 import com.hazem.worklink.models.Freelancer;
 import com.hazem.worklink.models.Review;
 import com.hazem.worklink.services.AiSearchClient;
@@ -11,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/freelancer")
@@ -109,6 +112,27 @@ public class FreelancerController {
         String cvUrl = request.get("cvUrl");
         Freelancer freelancer = freelancerService.updateCvUrl(email, cvUrl);
         return ResponseEntity.ok(freelancer);
+    }
+
+    // ─── Saved Missions ───────────────────────────────────────────────────────
+
+    /** Returns the list of saved mission IDs (most-recent first) for the current freelancer. */
+    @GetMapping("/saved-missions")
+    public ResponseEntity<List<String>> getSavedMissionIds(Authentication authentication) {
+        return ResponseEntity.ok(freelancerService.getSavedMissionIds(authentication.getName()));
+    }
+
+    /** Returns full mission details for all saved missions. */
+    @GetMapping("/saved-missions/details")
+    public ResponseEntity<List<MissionResponse>> getSavedMissions(Authentication authentication) {
+        return ResponseEntity.ok(freelancerService.getSavedMissions(authentication.getName()));
+    }
+
+    /** Toggle save/unsave a mission. Returns the updated list of saved IDs (most-recent first). */
+    @PostMapping("/saved-missions/{missionId}")
+    public ResponseEntity<List<String>> toggleSavedMission(@PathVariable String missionId,
+                                                            Authentication authentication) {
+        return ResponseEntity.ok(freelancerService.toggleSavedMission(authentication.getName(), missionId));
     }
 
     @PutMapping("/me/card-customization")
