@@ -14,6 +14,10 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -46,6 +50,13 @@ public class AiSearchClient {
                             ((Number) r.get("score")).doubleValue()))
                     .collect(Collectors.toList());
 
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.UNPROCESSABLE_ENTITY) {
+                String detail = extractDetail(e.getResponseBodyAsString());
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, detail);
+            }
+            log.error("[AI-SEARCH] Error calling AI service: {}", e.getMessage());
+            return Collections.emptyList();
         } catch (Exception e) {
             log.error("[AI-SEARCH] Error calling AI service: {}", e.getMessage());
             return Collections.emptyList();
@@ -113,10 +124,29 @@ public class AiSearchClient {
                             ((Number) r.get("score")).doubleValue()))
                     .collect(Collectors.toList());
 
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.UNPROCESSABLE_ENTITY) {
+                String detail = extractDetail(e.getResponseBodyAsString());
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, detail);
+            }
+            log.error("[AI-SEARCH] Error calling AI service for freelancers: {}", e.getMessage());
+            return Collections.emptyList();
         } catch (Exception e) {
             log.error("[AI-SEARCH] Error calling AI service for freelancers: {}", e.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    private String extractDetail(String responseBody) {
+        // FastAPI renvoie: {"detail": "message..."} — on extrait le texte
+        try {
+            if (responseBody != null && responseBody.contains("\"detail\"")) {
+                int start = responseBody.indexOf("\"detail\"") + 10;
+                int end = responseBody.lastIndexOf("\"");
+                if (end > start) return responseBody.substring(start, end);
+            }
+        } catch (Exception ignored) {}
+        return "Votre recherche semble hors du contexte de la plateforme.";
     }
 
     // ── Recommandation de missions pour un freelancer ─────────────────────────
