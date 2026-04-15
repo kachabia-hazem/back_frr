@@ -1,6 +1,7 @@
 package com.hazem.worklink.controllers;
 
 import com.hazem.worklink.dto.request.SubmitFeedbackRequest;
+import com.hazem.worklink.dto.response.FeedbackPublicDto;
 import com.hazem.worklink.models.Feedback;
 import com.hazem.worklink.services.FeedbackService;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,13 @@ import java.util.List;
 public class FeedbackController {
 
     private final FeedbackService feedbackService;
+
+    // ─── Public endpoint (home page — no auth required) ──────────────────────
+
+    @GetMapping("/api/public/feedbacks")
+    public ResponseEntity<List<FeedbackPublicDto>> getPublicFeedbacks() {
+        return ResponseEntity.ok(feedbackService.getPublicFeedbacks());
+    }
 
     // ─── User endpoints (FREELANCER / COMPANY) ────────────────────────────────
 

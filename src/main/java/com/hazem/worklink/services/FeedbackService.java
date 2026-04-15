@@ -1,6 +1,7 @@
 package com.hazem.worklink.services;
 
 import com.hazem.worklink.dto.request.SubmitFeedbackRequest;
+import com.hazem.worklink.dto.response.FeedbackPublicDto;
 import com.hazem.worklink.exceptions.ResourceNotFoundException;
 import com.hazem.worklink.models.Feedback;
 import com.hazem.worklink.models.enums.FeedbackStatus;
@@ -69,6 +70,31 @@ public class FeedbackService {
         Feedback saved = feedbackRepository.save(feedback);
         log.info("Feedback submitted by {} ({}) for mission {}", email, userRole, req.getMissionId());
         return saved;
+    }
+
+    // ─── Public (home page) ───────────────────────────────────────────────────
+
+    public List<FeedbackPublicDto> getPublicFeedbacks() {
+        return feedbackRepository.findAllByOrderByCreatedAtDesc().stream()
+                .filter(f -> f.getComment() != null && !f.getComment().isBlank())
+                .map(f -> {
+                    String userName;
+                    String userPhoto = null;
+                    if ("FREELANCER".equals(f.getUserRole())) {
+                        var opt = freelancerRepository.findById(f.getUserId());
+                        userName = opt.map(fr -> fr.getFirstName() + " " + fr.getLastName()).orElse("Freelancer");
+                        userPhoto = opt.map(fr -> fr.getProfilePicture()).orElse(null);
+                    } else {
+                        var opt = companyRepository.findById(f.getUserId());
+                        userName = opt.map(c -> c.getCompanyName()).orElse("Company");
+                        userPhoto = opt.map(c -> c.getCompanyLogo()).orElse(null);
+                    }
+                    return new FeedbackPublicDto(
+                            f.getId(), f.getUserRole(), userName, userPhoto,
+                            f.getRating(), f.getComment(), f.getCreatedAt()
+                    );
+                })
+                .toList();
     }
 
     // ─── Admin operations ─────────────────────────────────────────────────────
