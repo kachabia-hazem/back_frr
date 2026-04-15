@@ -38,20 +38,28 @@ public class ActiveMissionService {
     // ─── Create from contract (triggered after company signs) ────────────────
 
     public ActiveMission createFromContract(Contract contract) {
-        // If mission already exists (e.g. after a deadline extension + re-sign), reopen it
+        // If mission already exists (e.g. after a deadline extension + re-sign), update it
         if (activeMissionRepository.findByContractId(contract.getId()).isPresent()) {
             ActiveMission existing = activeMissionRepository.findByContractId(contract.getId()).get();
-            if (existing.getStatus() == ActiveMissionStatus.ACTIVE) {
+            if (existing.getStatus() == ActiveMissionStatus.ACTIVE || existing.getStatus() == ActiveMissionStatus.PENDING) {
                 // Update end date and salary in case they changed
                 existing.setEndDate(contract.getEndDate());
+                existing.setStartDate(contract.getStartDate());
                 if (contract.getSalary() != null) existing.setSalary(contract.getSalary());
                 ActiveMission saved = activeMissionRepository.save(existing);
-                log.info("ActiveMission {} updated with new endDate from contract {}", saved.getId(), contract.getId());
+                log.info("ActiveMission {} updated from contract {}", saved.getId(), contract.getId());
                 return saved;
             }
             log.info("ActiveMission already exists for contract {} with status {}", contract.getId(), existing.getStatus());
             return existing;
         }
+
+        // Determine initial status: PENDING if start date is in the future, ACTIVE otherwise
+        boolean startDateInFuture = contract.getStartDate() != null
+                && contract.getStartDate().isAfter(LocalDate.now());
+        ActiveMissionStatus initialStatus = startDateInFuture
+                ? ActiveMissionStatus.PENDING
+                : ActiveMissionStatus.ACTIVE;
 
         ActiveMission mission = new ActiveMission();
         mission.setContractId(contract.getId());
@@ -59,7 +67,7 @@ public class ActiveMissionService {
         mission.setCompanyId(contract.getCompanyId());
         mission.setTitle(contract.getMissionTitle());
         mission.setDescription("Mission created from contract #" + contract.getId());
-        mission.setStatus(ActiveMissionStatus.ACTIVE);
+        mission.setStatus(initialStatus);
         mission.setProgress(0);
         mission.setStartDate(contract.getStartDate());
         mission.setEndDate(contract.getEndDate());
@@ -67,7 +75,7 @@ public class ActiveMissionService {
         mission.setCreatedAt(LocalDateTime.now());
 
         ActiveMission saved = activeMissionRepository.save(mission);
-        log.info("ActiveMission created: {} for contract {}", saved.getId(), contract.getId());
+        log.info("ActiveMission created: {} for contract {} with status {}", saved.getId(), contract.getId(), initialStatus);
         return saved;
     }
 

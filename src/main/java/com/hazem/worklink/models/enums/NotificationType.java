@@ -26,5 +26,8 @@ public enum NotificationType {
 
     // ── Mission validation notifications ─────────────────────────────
     MISSION_SUBMITTED,             // company: freelancer submitted work for validation
-    MISSION_VALIDATED              // freelancer: company approved or requested revision
+    MISSION_VALIDATED,             // freelancer: company approved or requested revision
+
+    // ── Mission lifecycle notifications ───────────────────────────────
+    MISSION_ACTIVATED              // freelancer + company: pending mission start date reached
 }

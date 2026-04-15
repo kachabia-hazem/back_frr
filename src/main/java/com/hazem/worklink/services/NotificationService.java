@@ -364,6 +364,27 @@ public class NotificationService {
                 "WorkLink", null, "/company-missions");
     }
 
+    /** Mission Activated – Sent to both freelancer and company when a PENDING mission start date arrives */
+    public void sendMissionActivatedNotification(String freelancerId, String companyId, String missionTitle, String missionId) {
+        // Notify freelancer
+        String freelancerMessage = String.format(
+                "Your mission \"%s\" has officially started today! Head to Mission Tracking to begin your work.",
+                missionTitle);
+        build(freelancerId, NotificationType.MISSION_ACTIVATED,
+                "Mission Started \uD83D\uDE80",
+                freelancerMessage,
+                "WorkLink", null, "/active-mission/" + missionId);
+
+        // Notify company
+        String companyMessage = String.format(
+                "The mission \"%s\" has officially started today. You can follow the freelancer's progress in Mission Tracking.",
+                missionTitle);
+        build(companyId, NotificationType.MISSION_ACTIVATED,
+                "Mission Started \uD83D\uDE80",
+                companyMessage,
+                "WorkLink", null, "/company-mission-view/" + missionId);
+    }
+
     // ─── Read / query (supports both freelancers and companies) ─────────────────
 
     /** Resolves the MongoDB document ID for any registered user (freelancer or company). */
