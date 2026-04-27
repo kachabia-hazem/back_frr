@@ -2,6 +2,7 @@ package com.hazem.worklink.dto.response;
 
 import com.hazem.worklink.models.Contract;
 import com.hazem.worklink.models.enums.ContractStatus;
+import com.hazem.worklink.models.enums.PaymentStatus;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -30,7 +31,16 @@ public class ContractResponse {
     private LocalDateTime companySignedAt;
     private LocalDateTime rejectedAt;
     private String rejectionReason;
+    private LocalDateTime finishedAt;
+    private LocalDateTime cancelledAt;
+    private String cancellationReason;
     private LocalDateTime createdAt;
+
+    // Payment fields
+    private PaymentStatus paymentStatus;
+    private Double totalAmount;
+    private Double platformFee;
+    private Double freelancerAmount;
 
     public static ContractResponse from(Contract c) {
         ContractResponse r = new ContractResponse();
@@ -54,7 +64,14 @@ public class ContractResponse {
         r.setCompanySignedAt(c.getCompanySignedAt());
         r.setRejectedAt(c.getRejectedAt());
         r.setRejectionReason(c.getRejectionReason());
+        r.setFinishedAt(c.getFinishedAt());
+        r.setCancelledAt(c.getCancelledAt());
+        r.setCancellationReason(c.getCancellationReason());
         r.setCreatedAt(c.getCreatedAt());
+        r.setPaymentStatus(c.getPaymentStatus());
+        r.setTotalAmount(c.getTotalAmount());
+        r.setPlatformFee(c.getPlatformFee());
+        r.setFreelancerAmount(c.getFreelancerAmount());
         return r;
     }
 }

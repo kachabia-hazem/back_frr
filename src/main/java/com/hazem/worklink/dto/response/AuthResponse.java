@@ -27,6 +27,8 @@ public class AuthResponse {
 
     private OAuthProfileResponse oauthProfile;
 
+    private String verificationStatus;
+
     // Existing 5-arg constructor for backwards compatibility
     public AuthResponse(String token, String email, Role role, String id, String message) {
         this.token = token;

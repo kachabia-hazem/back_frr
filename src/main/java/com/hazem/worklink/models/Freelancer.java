@@ -93,4 +93,7 @@ public class Freelancer extends User {
 
     // ── Saved (bookmarked) public mission IDs — ordered most-recent first ──────
     private List<String> savedMissionIds = new ArrayList<>();
+
+    // ── Points balance ────────────────────────────────────────────────────────
+    private int pointsBalance = 0;
 }

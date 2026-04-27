@@ -36,6 +36,7 @@ public class ApplicationService {
     private final NotificationService notificationService;
     private final ContractService contractService;
     private final AiSearchClient aiSearchClient;
+    private final UserOffersService userOffersService;
 
     public Application submitApplication(String freelancerEmail, CreateApplicationRequest request) {
         Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
@@ -54,6 +55,13 @@ public class ApplicationService {
                         throw new RuntimeException("You have already applied to this mission");
                     }
                 });
+
+        // Deduct points for applying (throws InsufficientPointsException if balance too low)
+        userOffersService.deductFreelancerPoints(
+                freelancer.getId(), "APPLICATION",
+                UserOffersService.COST_APPLICATION,
+                "Candidature — " + mission.getJobTitle(),
+                mission.getId());
 
         Application application = new Application();
         application.setFreelancerId(freelancer.getId());
@@ -245,6 +253,13 @@ public class ApplicationService {
                 .collect(Collectors.toList());
 
         if (applications.isEmpty()) return List.of();
+
+        // Deduct points for AI ranking (throws InsufficientPointsException if balance too low)
+        userOffersService.deductCompanyPoints(
+                company.getId(), "AI_MATCHING",
+                UserOffersService.COST_AI_RANKING,
+                "Classement IA — " + mission.getJobTitle(),
+                missionId);
 
         // Récupérer les profils freelancers
         List<String> freelancerIds = applications.stream()

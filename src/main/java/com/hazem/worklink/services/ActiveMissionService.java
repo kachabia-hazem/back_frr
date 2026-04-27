@@ -8,6 +8,7 @@ import com.hazem.worklink.dto.response.GitActivityResponse;
 import com.hazem.worklink.exceptions.ResourceNotFoundException;
 import com.hazem.worklink.models.*;
 import com.hazem.worklink.models.enums.ActiveMissionStatus;
+import com.hazem.worklink.models.enums.ContractStatus;
 import com.hazem.worklink.models.enums.TaskStatus;
 import com.hazem.worklink.repositories.*;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ import java.util.Map;
 public class ActiveMissionService {
 
     private final ActiveMissionRepository activeMissionRepository;
+    private final ContractRepository contractRepository;
     private final TaskRepository taskRepository;
     private final DeliverableRepository deliverableRepository;
     private final FreelancerRepository freelancerRepository;
@@ -34,6 +36,7 @@ public class ActiveMissionService {
     private final GitHubService gitHubService;
     private final NotificationService notificationService;
     private final ReviewRepository reviewRepository;
+    private final StripeService stripeService;
 
     // ─── Create from contract (triggered after company signs) ────────────────
 
@@ -309,6 +312,23 @@ public class ActiveMissionService {
         }
         mission.setValidationNote(req.getNote());
         ActiveMission saved = activeMissionRepository.save(mission);
+
+        // Mark the linked contract as FINISHED and release escrow payment when mission is approved
+        if (req.isApproved()) {
+            contractRepository.findById(mission.getContractId()).ifPresent(contract -> {
+                contract.setStatus(ContractStatus.FINISHED);
+                contract.setFinishedAt(LocalDateTime.now());
+                contractRepository.save(contract);
+                log.info("Contract {} marked as FINISHED after mission {} validation", contract.getId(), missionId);
+
+                // Release escrow: capture the held payment and credit freelancer
+                try {
+                    stripeService.captureContractPayment(contract.getId());
+                } catch (Exception e) {
+                    log.error("Failed to capture Stripe payment for contract {}: {}", contract.getId(), e.getMessage());
+                }
+            });
+        }
 
         // If approved, create a review and update freelancer stats
         if (req.isApproved() && req.getRating() != null && !reviewRepository.existsByMissionId(missionId)) {

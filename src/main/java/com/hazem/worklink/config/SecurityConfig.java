@@ -46,12 +46,14 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/files/**").permitAll()
+                        .requestMatchers("/api/webhook/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/messages/**").hasAnyAuthority("FREELANCER", "COMPANY")
                         .requestMatchers("/api/freelancer/public/**").permitAll()
                         .requestMatchers("/api/company/public/**").permitAll()
                         .requestMatchers("/api/missions/public/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/offers/packs", "/api/offers/subscriptions").permitAll()
                         .requestMatchers("/api/missions/recommended").hasAuthority("FREELANCER")
                         .requestMatchers("/api/missions/*/match").hasAuthority("FREELANCER")
                         .requestMatchers("/api/missions/*/match/explain").hasAuthority("FREELANCER")
@@ -66,6 +68,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
                         .requestMatchers("/api/freelancer/**").hasAuthority("FREELANCER")
                         .requestMatchers("/api/company/**").hasAuthority("COMPANY")
+                        .requestMatchers("/api/payments/**").hasAnyAuthority("FREELANCER", "COMPANY")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

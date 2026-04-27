@@ -22,11 +22,16 @@ public class Feedback {
     private String missionTitle;
 
     private String userId;
-    private String userRole; // "COMPANY" or "FREELANCER"
+    private String userRole;    // "COMPANY" or "FREELANCER"
+    private String userName;    // cached at submission for fast admin display
+    private String userPhoto;   // cached at submission
 
-    private Integer rating;  // 1–5 stars
-    private String comment;  // optional
+    private Integer rating;     // 1–5 stars
+    private String comment;     // optional
 
     private FeedbackStatus status = FeedbackStatus.PENDING;
     private LocalDateTime createdAt;
+    private LocalDateTime validatedAt;
+    private LocalDateTime rejectedAt;
+    private String rejectionReason;
 }

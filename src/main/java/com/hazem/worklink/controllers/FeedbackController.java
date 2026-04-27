@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -51,6 +52,21 @@ public class FeedbackController {
     @PutMapping("/api/admin/feedbacks/{id}/validate")
     public ResponseEntity<Feedback> validateFeedback(@PathVariable String id) {
         return ResponseEntity.ok(feedbackService.validateFeedback(id));
+    }
+
+    /** Reject a feedback with a reason */
+    @PutMapping("/api/admin/feedbacks/{id}/reject")
+    public ResponseEntity<Feedback> rejectFeedback(
+            @PathVariable String id,
+            @RequestBody Map<String, String> body) {
+        String reason = body.getOrDefault("reason", "");
+        return ResponseEntity.ok(feedbackService.rejectFeedback(id, reason));
+    }
+
+    /** Feedback stats (total, pending, validated, rejected) */
+    @GetMapping("/api/admin/feedbacks/stats")
+    public ResponseEntity<Map<String, Long>> getStats() {
+        return ResponseEntity.ok(feedbackService.getStats());
     }
 
     /** Delete a feedback */

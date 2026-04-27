@@ -211,6 +211,16 @@ public class ContractService {
             log.error("Failed to send freelancer notification for contract {}: {}", saved.getId(), e.getMessage());
         }
 
+        // Notify all admins
+        try {
+            Company company = companyRepository.findById(contract.getCompanyId()).orElse(null);
+            String companyName = company != null ? company.getCompanyName() : "Entreprise inconnue";
+            notificationService.sendAdminContractSignedNotification(
+                    contract.getMissionTitle(), contract.getFreelancerName(), companyName);
+        } catch (Exception e) {
+            log.error("Failed to send admin notification for contract {}: {}", saved.getId(), e.getMessage());
+        }
+
         return ContractResponse.from(saved);
     }
 

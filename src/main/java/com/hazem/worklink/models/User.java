@@ -28,6 +28,8 @@ public abstract class User {
 
     protected Boolean isActive = true;
 
+    protected String banReason;
+
     protected LocalDateTime createdAt = LocalDateTime.now();
 
     protected LocalDateTime updatedAt = LocalDateTime.now();

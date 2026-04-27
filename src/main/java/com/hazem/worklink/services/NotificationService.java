@@ -2,14 +2,17 @@ package com.hazem.worklink.services;
 
 import com.hazem.worklink.dto.response.NotificationResponse;
 import com.hazem.worklink.exceptions.ResourceNotFoundException;
+import com.hazem.worklink.models.Admin;
 import com.hazem.worklink.models.Company;
 import com.hazem.worklink.models.Freelancer;
 import com.hazem.worklink.models.Notification;
 import com.hazem.worklink.models.enums.NotificationType;
+import com.hazem.worklink.repositories.AdminRepository;
 import com.hazem.worklink.repositories.CompanyRepository;
 import com.hazem.worklink.repositories.FreelancerRepository;
 import com.hazem.worklink.repositories.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -18,6 +21,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
@@ -25,7 +29,8 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final FreelancerRepository freelancerRepository;
     private final CompanyRepository companyRepository;
-    private final N8nWebhookService n8nWebhookService;
+    private final AdminRepository adminRepository;
+    private final EmailService emailService;
 
     private static final Set<NotificationType> EMAIL_NOTIFICATION_TYPES = Set.of(
             // Freelancer
@@ -43,7 +48,15 @@ public class NotificationService {
             NotificationType.APPLICATION_RECEIVED,
             NotificationType.PENDING_APPLICATIONS_REMINDER,
             NotificationType.MISSION_SUBMITTED,
-            NotificationType.CONTRACT_REJECTED
+            NotificationType.CONTRACT_REJECTED,
+            // Admin / Verification
+            NotificationType.COMPANY_PENDING_VERIFICATION,
+            NotificationType.COMPANY_APPROVED,
+            NotificationType.COMPANY_REJECTED,
+            NotificationType.MISSION_DELETED_BY_ADMIN,
+            NotificationType.CONTRACT_CANCELLED_BY_ADMIN,
+            NotificationType.FEEDBACK_VALIDATED,
+            NotificationType.FEEDBACK_REJECTED
     );
 
     // ─── Create helpers ────────────────────────────────────────────────────────
@@ -61,9 +74,39 @@ public class NotificationService {
         n.setCreatedAt(LocalDateTime.now());
         n.setActionUrl(actionUrl);
         Notification saved = notificationRepository.save(n);
+
         if (EMAIL_NOTIFICATION_TYPES.contains(type)) {
-            n8nWebhookService.sendEmailNotification(saved);
+            // Résoudre l'email et le nom du destinataire
+            String recipientEmail = null;
+            String recipientName = null;
+
+            var freelancer = freelancerRepository.findById(recipientId);
+            if (freelancer.isPresent()) {
+                recipientEmail = freelancer.get().getEmail();
+                recipientName = freelancer.get().getFirstName() + " " + freelancer.get().getLastName();
+            } else {
+                var company = companyRepository.findById(recipientId);
+                if (company.isPresent()) {
+                    recipientEmail = company.get().getEmail();
+                    recipientName = company.get().getCompanyName();
+                }
+            }
+
+            if (recipientEmail == null) {
+                var admin = adminRepository.findById(recipientId);
+                if (admin.isPresent()) {
+                    recipientEmail = admin.get().getEmail();
+                    recipientName = admin.get().getFirstName() + " " + admin.get().getLastName();
+                }
+            }
+
+            if (recipientEmail != null) {
+                emailService.sendNotificationEmail(recipientEmail, recipientName, title, message, actionUrl);
+            } else {
+                log.warn("No email found for recipientId: {} — notification email skipped", recipientId);
+            }
         }
+
         return saved;
     }
 
@@ -350,6 +393,109 @@ public class NotificationService {
                 companyName, null, "/active-mission/" + missionId);
     }
 
+    // ─── Admin / Company Verification notifications ──────────────────────────────
+
+    /** Verification 1 – Envoyée à l'entreprise dès son inscription (attente de validation) */
+    public void sendCompanyPendingVerificationNotification(String companyId) {
+        String message =
+                "Bienvenue sur WorkLink!\n\n" +
+                "Votre demande d'inscription a bien été reçue.\n" +
+                "Notre équipe va vérifier vos informations dans les plus brefs délais.\n\n" +
+                "Vous recevrez une notification par email dès que votre compte sera validé.\n" +
+                "Une fois approuvé, vous pourrez publier des missions et accéder à toutes les fonctionnalités de la plateforme.\n\n" +
+                "Merci de votre confiance.";
+
+        build(companyId, NotificationType.COMPANY_PENDING_VERIFICATION,
+                "Compte en attente de validation",
+                message,
+                "WorkLink Team", null, "/company-dashboard");
+    }
+
+    /** Verification 2 – Envoyée à l'entreprise quand l'admin approuve son compte */
+    public void sendCompanyApprovedNotification(String companyId) {
+        String message =
+                "Félicitations! Votre compte entreprise a été validé par notre équipe.\n\n" +
+                "Vous pouvez désormais accéder à toutes les fonctionnalités de WorkLink:\n" +
+                "- Publier des missions et recevoir des candidatures de freelancers qualifiés\n" +
+                "- Parcourir notre annuaire de freelancers et trouver les meilleurs profils\n" +
+                "- Gérer vos contrats et suivre vos projets en temps réel\n\n" +
+                "Bienvenue dans la communauté WorkLink!";
+
+        build(companyId, NotificationType.COMPANY_APPROVED,
+                "Compte validé - Bienvenue sur WorkLink!",
+                message,
+                "WorkLink Team", null, "/company-dashboard");
+    }
+
+    /** Verification 3 – Envoyée à l'entreprise quand l'admin rejette son compte */
+    public void sendCompanyRejectedNotification(String companyId, String reason) {
+        String message = String.format(
+                "Nous avons examiné votre demande d'inscription sur WorkLink.\n\n" +
+                "Malheureusement, nous ne pouvons pas approuver votre compte pour le moment.\n\n" +
+                "Motif: %s\n\n" +
+                "Si vous pensez qu'il s'agit d'une erreur ou si vous souhaitez fournir des informations complémentaires, " +
+                "veuillez nous contacter à support@worklink.com.",
+                reason != null && !reason.isBlank() ? reason : "Informations insuffisantes ou non conformes.");
+
+        build(companyId, NotificationType.COMPANY_REJECTED,
+                "Demande d'inscription refusée",
+                message,
+                "WorkLink Team", null, "/company-dashboard");
+    }
+
+    /** Admin – Sent to both parties when admin force-cancels a contract */
+    public void sendContractCancelledByAdminNotification(
+            String freelancerId, String companyId, String missionTitle, String reason) {
+        String msg = String.format(
+                "Le contrat pour la mission \"%s\" a été annulé par l'équipe d'administration WorkLink.\n\n" +
+                "Motif : %s\n\n" +
+                "Pour toute question, veuillez contacter support@worklink.com.",
+                missionTitle,
+                reason != null && !reason.isBlank() ? reason : "Non précisé.");
+
+        build(freelancerId, NotificationType.CONTRACT_CANCELLED_BY_ADMIN,
+                "Contrat annulé par l'administrateur", msg, "WorkLink Admin", null, "/freelancer-dashboard/contracts");
+        build(companyId, NotificationType.CONTRACT_CANCELLED_BY_ADMIN,
+                "Contrat annulé par l'administrateur", msg, "WorkLink Admin", null, "/company-dashboard/contracts");
+    }
+
+    /** Admin – Sent to company when admin deletes one of their missions */
+    public void sendMissionDeletedByAdminNotification(String companyId, String missionTitle, String reason) {
+        String message = String.format(
+                "Votre mission \"%s\" a été supprimée par l'équipe d'administration WorkLink.\n\n" +
+                "Motif : %s\n\n" +
+                "Si vous pensez qu'il s'agit d'une erreur, veuillez contacter notre support à support@worklink.com.",
+                missionTitle,
+                reason != null && !reason.isBlank() ? reason : "Non précisé.");
+
+        build(companyId, NotificationType.MISSION_DELETED_BY_ADMIN,
+                "Mission supprimée par l'administrateur",
+                message,
+                "WorkLink Admin", null, "/company-dashboard/missions");
+    }
+
+    /** Admin – Sent to user when their feedback is approved and published */
+    public void sendFeedbackValidatedNotification(String userId) {
+        build(userId, NotificationType.FEEDBACK_VALIDATED,
+                "Votre avis est publié sur WorkLink !",
+                "Merci pour votre retour ! Votre avis a été examiné par notre équipe et est désormais visible " +
+                "sur la page d'accueil de WorkLink.\n\nVotre témoignage aide la communauté WorkLink à grandir.",
+                "WorkLink Team", null, "/");
+    }
+
+    /** Admin – Sent to user when their feedback is rejected */
+    public void sendFeedbackRejectedNotification(String userId, String reason) {
+        String message = String.format(
+                "Votre avis sur WorkLink n'a pas pu être publié après examen par notre équipe de modération.\n\n" +
+                "Motif : %s\n\n" +
+                "Si vous pensez qu'il s'agit d'une erreur, contactez-nous à support@worklink.com.",
+                reason != null && !reason.isBlank() ? reason : "Non conforme à la charte de la communauté.");
+        build(userId, NotificationType.FEEDBACK_REJECTED,
+                "Votre avis n'a pas été retenu",
+                message,
+                "WorkLink Team", null, null);
+    }
+
     /** Company Case 5 – Sent when a mission is closed */
     public void sendMissionClosedNotification(String companyId, String missionTitle) {
         String message = String.format(
@@ -387,7 +533,7 @@ public class NotificationService {
 
     // ─── Read / query (supports both freelancers and companies) ─────────────────
 
-    /** Resolves the MongoDB document ID for any registered user (freelancer or company). */
+    /** Resolves the MongoDB document ID for any registered user (freelancer, company, or admin). */
     private String resolveRecipientId(String email) {
         Optional<Freelancer> freelancer = freelancerRepository.findByEmail(email);
         if (freelancer.isPresent()) return freelancer.get().getId();
@@ -395,7 +541,19 @@ public class NotificationService {
         Optional<Company> company = companyRepository.findByEmail(email);
         if (company.isPresent()) return company.get().getId();
 
+        Optional<Admin> admin = adminRepository.findByEmail(email);
+        if (admin.isPresent()) return admin.get().getId();
+
         throw new ResourceNotFoundException("User not found with email: " + email);
+    }
+
+    /** Sends a notification to every admin in the system. */
+    private void notifyAllAdmins(NotificationType type, String title, String message,
+                                  String senderName, String senderId, String actionUrl) {
+        List<Admin> admins = adminRepository.findAll();
+        for (Admin admin : admins) {
+            build(admin.getId(), type, title, message, senderName, senderId, actionUrl);
+        }
     }
 
     public List<NotificationResponse> getMyNotifications(String email) {
@@ -430,5 +588,100 @@ public class NotificationService {
         List<Notification> unread = notificationRepository.findByRecipientIdAndIsReadFalse(recipientId);
         unread.forEach(n -> n.setRead(true));
         notificationRepository.saveAll(unread);
+    }
+
+    // ─── Admin-targeted notification triggers ────────────────────────────────────
+
+    /** Notifie tous les admins qu'une entreprise vient de s'inscrire et attend vérification. */
+    public void sendAdminCompanyVerificationRequestNotification(String companyName, String companyId) {
+        String message = String.format(
+                "La société \"%s\" vient de s'inscrire sur WorkLink et attend votre validation.\n" +
+                "Veuillez examiner les informations et documents fournis, puis approuver ou rejeter le compte.",
+                companyName);
+
+        notifyAllAdmins(
+                NotificationType.ADMIN_COMPANY_VERIFICATION_REQUEST,
+                "Nouvelle demande de vérification : " + companyName,
+                message,
+                companyName, companyId,
+                "/admin/verifications/" + companyId);
+    }
+
+    /** Notifie tous les admins qu'un nouveau freelancer vient de s'inscrire. */
+    public void sendAdminNewFreelancerRegisteredNotification(String freelancerName, String freelancerId) {
+        String message = String.format(
+                "Le freelancer \"%s\" vient de rejoindre WorkLink.\n" +
+                "Son profil est maintenant actif sur la plateforme.",
+                freelancerName);
+
+        notifyAllAdmins(
+                NotificationType.ADMIN_NEW_FREELANCER_REGISTERED,
+                "Nouveau freelancer inscrit : " + freelancerName,
+                message,
+                freelancerName, freelancerId,
+                "/admin/users");
+    }
+
+    /** Notifie tous les admins qu'un contrat vient d'être signé. */
+    public void sendAdminContractSignedNotification(String missionTitle, String freelancerName, String companyName) {
+        String message = String.format(
+                "Le freelancer \"%s\" a signé le contrat pour la mission \"%s\" avec la société \"%s\".\n" +
+                "Le mission est maintenant officiellement démarrée.",
+                freelancerName, missionTitle, companyName);
+
+        notifyAllAdmins(
+                NotificationType.ADMIN_NEW_CONTRACT_SIGNED,
+                "Contrat signé : " + missionTitle,
+                message,
+                "WorkLink System", null,
+                "/admin/contracts");
+    }
+
+    /** Notifie tous les admins qu'une nouvelle mission a été publiée. */
+    public void sendAdminNewMissionPublishedNotification(String missionTitle, String companyName, String missionId) {
+        String message = String.format(
+                "La société \"%s\" vient de publier une nouvelle mission : \"%s\".\n" +
+                "Elle est maintenant visible aux freelancers sur la plateforme.",
+                companyName, missionTitle);
+
+        notifyAllAdmins(
+                NotificationType.ADMIN_NEW_MISSION_PUBLISHED,
+                "Nouvelle mission publiée : " + missionTitle,
+                message,
+                companyName, null,
+                "/admin/missions");
+    }
+
+    // ── Payment notifications ─────────────────────────────────────────────────
+
+    public void sendContractPaymentNotification(String companyId, String freelancerId,
+                                                String missionTitle, Double amount) {
+        String fmt = amount != null ? String.format("%.2f DT", amount) : "—";
+        build(companyId, NotificationType.CONTRACT_PAYMENT_AUTHORIZED,
+                "Paiement sécurisé ✓",
+                "Votre paiement de " + fmt + " pour la mission \"" + missionTitle + "\" a été sécurisé.\n" +
+                "Les fonds sont bloqués en escrow et seront libérés au freelancer après validation.",
+                "WorkLink", null, "/company-contracts");
+        build(freelancerId, NotificationType.CONTRACT_PAYMENT_AUTHORIZED,
+                "Paiement de mission sécurisé 🔒",
+                "L'entreprise a effectué le paiement pour la mission \"" + missionTitle + "\".\n" +
+                "Un montant de " + fmt + " est en escrow. Vous le recevrez après validation de votre travail.",
+                "WorkLink", null, "/freelancer-contracts");
+    }
+
+    public void sendPaymentReleasedNotification(String freelancerId, String missionTitle, Double amount) {
+        String fmt = amount != null ? String.format("%.2f DT", amount) : "—";
+        build(freelancerId, NotificationType.CONTRACT_PAYMENT_RELEASED,
+                "Paiement libéré 🎉",
+                "Le paiement de " + fmt + " pour la mission \"" + missionTitle +
+                "\" a été libéré sur votre compte (commission 7% déduite).",
+                "WorkLink", null, "/freelancer-contracts");
+    }
+
+    public void sendPackPurchaseNotification(String userId, String packName, int points) {
+        build(userId, NotificationType.PACK_PURCHASED,
+                "Points crédités ✓",
+                points + " points ont été ajoutés à votre solde suite à l'achat du pack \"" + packName + "\".",
+                "WorkLink", null, "/company-balance");
     }
 }

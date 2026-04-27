@@ -1,6 +1,8 @@
 package com.hazem.worklink.services;
 
+import com.hazem.worklink.models.Company;
 import com.hazem.worklink.models.Mission;
+import com.hazem.worklink.repositories.CompanyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +32,7 @@ import java.util.stream.Collectors;
 public class AiSearchClient {
 
     private final RestTemplate restTemplate;
+    private final CompanyRepository companyRepository;
 
     @Value("${ai.service.url:http://localhost:8000}")
     private String aiServiceUrl;
@@ -331,6 +334,43 @@ public class AiSearchClient {
 
     private String nullSafe(String s) {
         return s != null ? s : "";
+    }
+
+    // ── Company Trust Score ───────────────────────────────────────────────────
+
+    /**
+     * Appelle le service Python pour calculer le trust score de l'entreprise.
+     * Met à jour le champ trustScore dans MongoDB de façon asynchrone.
+     */
+    @org.springframework.scheduling.annotation.Async
+    public void computeCompanyTrustScore(Company company) {
+        try {
+            Map<String, Object> body = new HashMap<>();
+            body.put("company_id", company.getId());
+            body.put("company_name", nullSafe(company.getCompanyName()));
+            body.put("email", nullSafe(company.getEmail()));
+            body.put("website_url", nullSafe(company.getWebsiteUrl()));
+            body.put("trade_register", nullSafe(company.getTradeRegister()));
+            body.put("description", nullSafe(company.getDescription()));
+            body.put("business_sector", nullSafe(company.getBusinessSector()));
+            body.put("manager_name", nullSafe(company.getManagerName()));
+            body.put("manager_email", nullSafe(company.getManagerEmail()));
+            body.put("number_of_employees", company.getNumberOfEmployees());
+            body.put("foundation_date", company.getFoundationDate() != null ? company.getFoundationDate().toString() : null);
+            body.put("address", nullSafe(company.getAddress()));
+
+            Map<String, Object> response = restTemplate.postForObject(
+                    aiServiceUrl + "/company/trust-score", body, Map.class);
+
+            if (response != null && response.containsKey("trust_score")) {
+                int score = ((Number) response.get("trust_score")).intValue();
+                company.setTrustScore(score);
+                companyRepository.save(company);
+                log.info("[TRUST-SCORE] Company '{}' scored: {}/100", company.getCompanyName(), score);
+            }
+        } catch (Exception e) {
+            log.error("[TRUST-SCORE] Failed to compute trust score for {}: {}", company.getCompanyName(), e.getMessage());
+        }
     }
 
     // ── DTOs internes ─────────────────────────────────────────────────────────

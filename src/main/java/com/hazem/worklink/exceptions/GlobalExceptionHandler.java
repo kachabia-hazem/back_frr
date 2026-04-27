@@ -31,6 +31,26 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
+    // Gestion : Solde de points insuffisant
+    @ExceptionHandler(InsufficientPointsException.class)
+    public ResponseEntity<Map<String, Object>> handleInsufficientPoints(InsufficientPointsException ex) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("message", ex.getMessage());
+        error.put("code", "INSUFFICIENT_POINTS");
+        error.put("required", ex.getRequired());
+        error.put("available", ex.getAvailable());
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(error);
+    }
+
+    // Gestion : Compte banni
+    @ExceptionHandler(UserBannedException.class)
+    public ResponseEntity<Map<String, String>> handleUserBanned(UserBannedException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", ex.getMessage());
+        error.put("banReason", ex.getBanReason() != null ? ex.getBanReason() : "");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
     // Gestion : Mauvais identifiants (login incorrect)
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Map<String, String>> handleBadCredentials(BadCredentialsException ex) {

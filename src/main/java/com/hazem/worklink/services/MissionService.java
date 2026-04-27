@@ -5,6 +5,7 @@ import com.hazem.worklink.dto.response.MissionResponse;
 import com.hazem.worklink.exceptions.ResourceNotFoundException;
 import com.hazem.worklink.models.Company;
 import com.hazem.worklink.models.Mission;
+import com.hazem.worklink.models.enums.CompanyStatus;
 import com.hazem.worklink.models.enums.MissionStatus;
 import com.hazem.worklink.repositories.CompanyRepository;
 import com.hazem.worklink.repositories.FreelancerRepository;
@@ -33,10 +34,18 @@ public class MissionService {
     private final FreelancerRepository freelancerRepository;
     private final NotificationService notificationService;
     private final AiSearchClient aiSearchClient;
+    private final UserOffersService userOffersService;
 
     public Mission createMission(String companyEmail, CreateMissionRequest request) {
         Company company = companyRepository.findByEmail(companyEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found with email: " + companyEmail));
+
+        if (company.getVerificationStatus() == null || company.getVerificationStatus() == CompanyStatus.PENDING) {
+            throw new RuntimeException("Votre compte est en attente de validation par l'administrateur. Vous ne pouvez pas publier de missions pour le moment.");
+        }
+        if (company.getVerificationStatus() == CompanyStatus.REJECTED) {
+            throw new RuntimeException("Votre compte a été refusé. Veuillez contacter l'administrateur.");
+        }
 
         Mission mission = new Mission();
         mission.setCompanyId(company.getId());
@@ -66,6 +75,10 @@ public class MissionService {
         // Notify the company: mission published successfully
         notificationService.sendMissionPublishedNotification(
                 company.getId(), savedMission.getJobTitle(), savedMission.getId());
+
+        // Notify all admins: new mission published
+        notificationService.sendAdminNewMissionPublishedNotification(
+                savedMission.getJobTitle(), company.getCompanyName(), savedMission.getId());
 
         // Notify matching freelancers
         notifyMatchingFreelancers(savedMission, company);
@@ -301,6 +314,14 @@ public class MissionService {
         com.hazem.worklink.models.Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found"));
         Mission mission = getMissionById(missionId);
+
+        // Deduct points for AI matching (throws InsufficientPointsException if balance too low)
+        userOffersService.deductFreelancerPoints(
+                freelancer.getId(), "AI_MATCHING",
+                UserOffersService.COST_AI_MATCHING,
+                "Compatibilité IA — " + mission.getJobTitle(),
+                missionId);
+
         return aiSearchClient.matchMissionQuick(freelancer, mission);
     }
 

@@ -1,6 +1,7 @@
 package com.hazem.worklink.models;
 
 
+import com.hazem.worklink.models.enums.CompanyStatus;
 import com.hazem.worklink.models.enums.LegalForm;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,6 +10,9 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Document(collection = "companies")
 @Data
@@ -49,4 +53,22 @@ public class Company extends User {
 
 
     private Integer postedProjects;
+
+    // ── Admin Verification ───────────────────────────────────────────────────
+    private CompanyStatus verificationStatus = CompanyStatus.PENDING;
+
+    private String rejectionReason;
+
+    private LocalDateTime verifiedAt;
+
+    private Integer trustScore;
+
+    // ── Points & Subscription ─────────────────────────────────────────────────
+    private int pointsBalance = 0;
+
+    private String subscriptionPlanId;
+
+    private LocalDateTime subscriptionStartDate;
+
+    private LocalDateTime subscriptionExpiresAt;
 }

@@ -8,5 +8,5 @@ services:
       - N8N_PROXY_HOPS=1
       - WEBHOOK_URL=https://unparenthesized-wheeled-cole.ngrok-free.dev
     volumes:
-      - C:\Users\ayafo\Desktop\n8n:/home/node/.n8n
+      - C:\Users\hazem\n8n:/home/node/.n8n
     restart: unless-stopped

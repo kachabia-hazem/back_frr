@@ -3,7 +3,9 @@ package com.hazem.worklink.services;
 import com.hazem.worklink.dto.request.*;
 import com.hazem.worklink.dto.response.AuthResponse;
 import com.hazem.worklink.exceptions.EmailAlreadyExistsException;
+import com.hazem.worklink.exceptions.UserBannedException;
 import com.hazem.worklink.models.*;
+import com.hazem.worklink.models.enums.CompanyStatus;
 import com.hazem.worklink.models.enums.Role;
 import com.hazem.worklink.models.RefreshToken;
 import com.hazem.worklink.repositories.*;
@@ -31,6 +33,7 @@ public class AuthService {
     private final NotificationService notificationService;
     private final AiSearchClient aiSearchClient;
     private final RefreshTokenService refreshTokenService;
+    private final N8nWebhookService n8nWebhookService;
 
     // Register Freelancer
     public AuthResponse registerFreelancer(RegisterFreelancerRequest request) {
@@ -67,6 +70,9 @@ public class AuthService {
 
         // Send welcome notification
         notificationService.sendWelcomeNotification(savedFreelancer.getId());
+        notificationService.sendAdminNewFreelancerRegisteredNotification(
+                savedFreelancer.getFirstName() + " " + savedFreelancer.getLastName(),
+                savedFreelancer.getId());
 
         // Générer les tokens
         String token = jwtUtil.generateToken(
@@ -116,12 +122,20 @@ public class AuthService {
         company.setCreatedAt(LocalDateTime.now());
         company.setUpdatedAt(LocalDateTime.now());
         company.setPostedProjects(0);
-
+        company.setVerificationStatus(CompanyStatus.PENDING);
 
         Company savedCompany = companyRepository.save(company);
 
-        // Send welcome notification
-        notificationService.sendCompanyWelcomeNotification(savedCompany.getId());
+        // Déclencher l'analyse du trust score AI (asynchrone)
+        aiSearchClient.computeCompanyTrustScore(savedCompany);
+
+        // Send welcome notification (pending verification)
+        notificationService.sendCompanyPendingVerificationNotification(savedCompany.getId());
+        notificationService.sendAdminCompanyVerificationRequestNotification(
+                savedCompany.getCompanyName(), savedCompany.getId());
+
+        // Notifier l'admin via n8n
+        n8nWebhookService.notifyAdminNewCompanyRegistration(savedCompany);
 
         // Générer les tokens
         String token = jwtUtil.generateToken(
@@ -202,10 +216,14 @@ public class AuthService {
         String email = request.getEmail();
         String userId = null;
         Role role = null;
+        String verificationStatus = null;
 
         // Chercher dans Freelancer
         var freelancer = freelancerRepository.findByEmail(email);
         if (freelancer.isPresent()) {
+            if (!Boolean.TRUE.equals(freelancer.get().getIsActive())) {
+                throw new UserBannedException(freelancer.get().getBanReason());
+            }
             userId = freelancer.get().getId();
             role = freelancer.get().getRole();
         }
@@ -214,8 +232,14 @@ public class AuthService {
         if (userId == null) {
             var company = companyRepository.findByEmail(email);
             if (company.isPresent()) {
+                if (!Boolean.TRUE.equals(company.get().getIsActive())) {
+                    throw new UserBannedException(company.get().getBanReason());
+                }
                 userId = company.get().getId();
                 role = company.get().getRole();
+                verificationStatus = company.get().getVerificationStatus() != null
+                        ? company.get().getVerificationStatus().name()
+                        : "PENDING";
             }
         }
 
@@ -236,7 +260,7 @@ public class AuthService {
         String token = jwtUtil.generateToken(email, role, userId);
         String refreshToken = refreshTokenService.createRefreshToken(email).getToken();
 
-        return new AuthResponse(
+        AuthResponse response = new AuthResponse(
                 token,
                 refreshToken,
                 email,
@@ -244,6 +268,8 @@ public class AuthService {
                 userId,
                 "Connexion réussie"
         );
+        response.setVerificationStatus(verificationStatus);
+        return response;
     }
 
     // Refresh Access Token

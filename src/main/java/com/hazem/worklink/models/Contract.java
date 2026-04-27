@@ -1,6 +1,7 @@
 package com.hazem.worklink.models;
 
 import com.hazem.worklink.models.enums.ContractStatus;
+import com.hazem.worklink.models.enums.PaymentStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -56,5 +57,21 @@ public class Contract {
     private LocalDateTime rejectedAt;
     private String rejectionReason;
 
+    // Finished (when company validates the active mission)
+    private LocalDateTime finishedAt;
+
+    // Cancellation (by admin)
+    private LocalDateTime cancelledAt;
+    private String cancellationReason;
+
     private LocalDateTime createdAt;
+
+    // ── Stripe Escrow Payment ────────────────────────────────────────────────
+    private PaymentStatus paymentStatus = PaymentStatus.UNPAID;
+    private String        paymentIntentId;   // Stripe PaymentIntent ID
+    private Double        totalAmount;       // salary × contract days
+    private Double        platformFee;       // 7% commission
+    private Double        freelancerAmount;  // 93% to freelancer
+    private LocalDateTime paidAt;            // when AUTHORIZED
+    private LocalDateTime capturedAt;        // when CAPTURED (mission validated)
 }
