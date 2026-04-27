@@ -39,6 +39,7 @@ public class Report {
     private String contractTitle;
 
     private String description;
+    private String customType;   // used when type = AUTRE
 
     // Admin actions
     private String adminNote;

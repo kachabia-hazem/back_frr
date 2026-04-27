@@ -5,7 +5,6 @@ import com.hazem.worklink.exceptions.ResourceNotFoundException;
 import com.hazem.worklink.models.Report;
 import com.hazem.worklink.models.enums.ReportStatus;
 import com.hazem.worklink.repositories.CompanyRepository;
-import com.hazem.worklink.repositories.ContractRepository;
 import com.hazem.worklink.repositories.FreelancerRepository;
 import com.hazem.worklink.repositories.ReportRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +23,6 @@ public class ReportService {
     private final ReportRepository reportRepository;
     private final FreelancerRepository freelancerRepository;
     private final CompanyRepository companyRepository;
-    private final ContractRepository contractRepository;
     private final EmailService emailService;
 
     // ─── Create (Freelancer or Company) ──────────────────────────────────────
@@ -34,6 +32,7 @@ public class ReportService {
         report.setType(req.getType());
         report.setStatus(ReportStatus.EN_ATTENTE);
         report.setDescription(req.getDescription());
+        report.setCustomType(req.getCustomType());
         report.setCreatedAt(LocalDateTime.now());
         report.setUpdatedAt(LocalDateTime.now());
 
@@ -54,31 +53,8 @@ public class ReportService {
             report.setReportedByEmail(company.getEmail());
         }
 
-        // Resolve reported-against identity
-        if (req.getReportedAgainstId() != null) {
-            freelancerRepository.findById(req.getReportedAgainstId()).ifPresentOrElse(fl -> {
-                report.setReportedAgainstId(fl.getId());
-                report.setReportedAgainstRole("FREELANCER");
-                report.setReportedAgainstName(fl.getFirstName() + " " + fl.getLastName());
-                report.setReportedAgainstEmail(fl.getEmail());
-            }, () -> companyRepository.findById(req.getReportedAgainstId()).ifPresent(c -> {
-                report.setReportedAgainstId(c.getId());
-                report.setReportedAgainstRole("COMPANY");
-                report.setReportedAgainstName(c.getCompanyName());
-                report.setReportedAgainstEmail(c.getEmail());
-            }));
-        }
-
-        // Resolve optional contract
-        if (req.getContractId() != null && !req.getContractId().isBlank()) {
-            contractRepository.findById(req.getContractId()).ifPresent(c -> {
-                report.setContractId(c.getId());
-                report.setContractTitle(c.getMissionTitle());
-            });
-        }
-
         Report saved = reportRepository.save(report);
-        log.info("Report created by {} ({}) against {}", reporterEmail, report.getReportedByRole(), req.getReportedAgainstId());
+        log.info("Report created by {} ({}), type={}", reporterEmail, report.getReportedByRole(), req.getType());
         return saved;
     }
 

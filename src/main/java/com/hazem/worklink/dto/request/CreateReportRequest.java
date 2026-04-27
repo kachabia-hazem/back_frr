@@ -6,7 +6,6 @@ import lombok.Data;
 @Data
 public class CreateReportRequest {
     private ReportType type;
-    private String reportedAgainstId;
-    private String contractId;   // optional
+    private String customType;   // filled when type = AUTRE
     private String description;
 }
