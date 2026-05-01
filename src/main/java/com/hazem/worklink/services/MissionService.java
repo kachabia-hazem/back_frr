@@ -318,7 +318,7 @@ public class MissionService {
         // Deduct points for AI matching (throws InsufficientPointsException if balance too low)
         userOffersService.deductFreelancerPoints(
                 freelancer.getId(), "AI_MATCHING",
-                UserOffersService.COST_AI_MATCHING,
+                userOffersService.getAiMatchingCost(),
                 "Compatibilité IA — " + mission.getJobTitle(),
                 missionId);
 

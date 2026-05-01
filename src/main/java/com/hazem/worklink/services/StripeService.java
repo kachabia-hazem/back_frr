@@ -9,8 +9,10 @@ import com.hazem.worklink.models.Contract;
 import com.hazem.worklink.models.Freelancer;
 import com.hazem.worklink.models.PointPack;
 import com.hazem.worklink.models.PointTransaction;
+import com.hazem.worklink.models.SubscriptionPlan;
 import com.hazem.worklink.models.enums.PaymentStatus;
 import com.hazem.worklink.repositories.*;
+import com.hazem.worklink.models.PlatformSettings;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.checkout.Session;
@@ -34,19 +36,18 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StripeService {
 
-    private final ContractRepository      contractRepository;
-    private final FreelancerRepository    freelancerRepository;
-    private final CompanyRepository       companyRepository;
-    private final PointPackRepository     packRepository;
-    private final PointTransactionRepository transactionRepository;
-    private final NotificationService     notificationService;
-    private final EmailService            emailService;
+    private final ContractRepository          contractRepository;
+    private final FreelancerRepository        freelancerRepository;
+    private final CompanyRepository           companyRepository;
+    private final PointPackRepository         packRepository;
+    private final SubscriptionPlanRepository  subscriptionRepository;
+    private final PointTransactionRepository  transactionRepository;
+    private final NotificationService         notificationService;
+    private final EmailService                emailService;
+    private final PlatformSettingsRepository  platformSettingsRepository;
 
     @Value("${stripe.currency}")
     private String currency;
-
-    @Value("${stripe.platform-fee-percent}")
-    private int platformFeePercent;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
@@ -73,8 +74,10 @@ public class StripeService {
         }
 
         // Calculate total contract amount
+        int feePercent = platformSettingsRepository.findById("platform_default")
+                .map(PlatformSettings::getPlatformFeePercent).orElse(7);
         double total    = calculateContractTotal(contract);
-        double fee      = Math.round(total * platformFeePercent) / 100.0;
+        double fee      = Math.round(total * feePercent) / 100.0;
         double toFreelancer = total - fee;
 
         long amountCents = Math.round(total * CENTS);
@@ -109,7 +112,7 @@ public class StripeService {
                 "totalAmount", total,
                 "platformFee", fee,
                 "freelancerAmount", toFreelancer,
-                "currency", currency.toUpperCase()
+                "currency", "DT"
         );
     }
 
@@ -176,7 +179,7 @@ public class StripeService {
      * Creates a Stripe Checkout Session for point pack purchase.
      * Returns the Stripe-hosted checkout URL.
      */
-    public String createPackCheckoutSession(String packId, String userEmail)
+    public String createPackCheckoutSession(String packId, String userEmail, String locale)
             throws StripeException {
 
         PointPack pack = packRepository.findById(packId)
@@ -195,6 +198,7 @@ public class StripeService {
 
         SessionCreateParams params = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
+                .setLocale(resolveLocale(locale))
                 .setSuccessUrl(frontendUrl + "/payment/success?session_id={CHECKOUT_SESSION_ID}&pack=" + packId)
                 .setCancelUrl(frontendUrl + "/payment/cancel")
                 .setCustomerEmail(userEmail)
@@ -205,7 +209,8 @@ public class StripeService {
                                 .setUnitAmount(amountCents)
                                 .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
                                         .setName("WorkLink — " + pack.getName())
-                                        .setDescription(pack.getPoints() + " points · " + pack.getCategory())
+                                        .setDescription(pack.getPoints() + " points · " + pack.getCategory()
+                                                + " · " + String.format("%.3f", finalPrice).replace(".", ",") + " DT")
                                         .build())
                                 .build())
                         .build())
@@ -217,6 +222,127 @@ public class StripeService {
         Session session = Session.create(params);
         log.info("Checkout session {} created for pack {} — user {}", session.getId(), packId, userEmail);
         return session.getUrl();
+    }
+
+    // ─── SUBSCRIPTION CHECKOUT ───────────────────────────────────────────────
+
+    /**
+     * Creates a Stripe Checkout Session for a subscription plan purchase.
+     * Returns the Stripe-hosted checkout URL.
+     */
+    public String createSubscriptionCheckoutSession(String planId, String userEmail, String locale)
+            throws StripeException {
+
+        SubscriptionPlan plan = subscriptionRepository.findById(planId)
+                .orElseThrow(() -> new ResourceNotFoundException("Plan not found: " + planId));
+
+        if (!Boolean.TRUE.equals(plan.getIsActive()))
+            throw new IllegalStateException("Plan is not available");
+
+        double finalPrice = plan.getPricePerMonth();
+        if (Boolean.TRUE.equals(plan.getPromoEnabled()) && plan.getPromoDiscountPercent() > 0) {
+            finalPrice = plan.getPricePerMonth() * (1 - plan.getPromoDiscountPercent() / 100.0);
+        }
+
+        long amountCents = Math.round(finalPrice * CENTS);
+
+        String dtPrice = String.format("%.3f", finalPrice).replace(".", ",") + " DT";
+        String planDesc = "fr".equalsIgnoreCase(locale)
+                ? plan.getPointsPerMonth() + " points · Abonnement mensuel · " + dtPrice
+                : plan.getPointsPerMonth() + " points · Monthly subscription · " + dtPrice;
+
+        SessionCreateParams params = SessionCreateParams.builder()
+                .setMode(SessionCreateParams.Mode.PAYMENT)
+                .setLocale(resolveLocale(locale))
+                .setSuccessUrl(frontendUrl + "/payment/success?session_id={CHECKOUT_SESSION_ID}&plan=" + planId)
+                .setCancelUrl(frontendUrl + "/payment/cancel")
+                .setCustomerEmail(userEmail)
+                .addLineItem(SessionCreateParams.LineItem.builder()
+                        .setQuantity(1L)
+                        .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
+                                .setCurrency(currency)
+                                .setUnitAmount(amountCents)
+                                .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                        .setName("WorkLink — " + plan.getName())
+                                        .setDescription(planDesc)
+                                        .build())
+                                .build())
+                        .build())
+                .putMetadata("planId",    planId)
+                .putMetadata("userEmail", userEmail)
+                .putMetadata("type", "SUBSCRIPTION_PURCHASE")
+                .build();
+
+        Session session = Session.create(params);
+        log.info("Checkout session {} created for plan {} — user {}", session.getId(), planId, userEmail);
+        return session.getUrl();
+    }
+
+    /**
+     * Activates the subscription and credits points after a confirmed checkout session.
+     * Works for both freelancers and companies.
+     */
+    public void handleSubscriptionPurchaseCompleted(String sessionId, String planId, String userEmail) {
+        SubscriptionPlan plan = subscriptionRepository.findById(planId).orElse(null);
+        if (plan == null) { log.error("Plan {} not found for session {}", planId, sessionId); return; }
+
+        LocalDateTime now = LocalDateTime.now();
+        double price = Boolean.TRUE.equals(plan.getPromoEnabled()) && plan.getPromoDiscountPercent() > 0
+                ? Math.round(plan.getPricePerMonth() * (1 - plan.getPromoDiscountPercent() / 100.0) * 1000.0) / 1000.0
+                : plan.getPricePerMonth();
+
+        var freelancerOpt = freelancerRepository.findByEmail(userEmail);
+        if (freelancerOpt.isPresent()) {
+            Freelancer fl = freelancerOpt.get();
+            fl.setSubscriptionPlanId(planId);
+            fl.setSubscriptionStartDate(now);
+            fl.setSubscriptionExpiresAt(now.plusMonths(1));
+            fl.setPointsBalance(fl.getPointsBalance() + plan.getPointsPerMonth());
+            freelancerRepository.save(fl);
+            recordSubscriptionTransaction(fl.getId(), plan, price, sessionId, now);
+            notificationService.sendPackPurchaseNotification(fl.getId(), plan.getName(), plan.getPointsPerMonth());
+            log.info("Subscription {} activated for freelancer {}", plan.getName(), userEmail);
+        } else {
+            companyRepository.findByEmail(userEmail).ifPresent(company -> {
+                company.setSubscriptionPlanId(planId);
+                company.setSubscriptionStartDate(now);
+                company.setSubscriptionExpiresAt(now.plusMonths(1));
+                company.setPointsBalance(company.getPointsBalance() + plan.getPointsPerMonth());
+                companyRepository.save(company);
+                recordSubscriptionTransaction(company.getId(), plan, price, sessionId, now);
+                notificationService.sendPackPurchaseNotification(company.getId(), plan.getName(), plan.getPointsPerMonth());
+                log.info("Subscription {} activated for company {}", plan.getName(), userEmail);
+            });
+        }
+    }
+
+    /**
+     * Called from /payment/success after Stripe redirects back.
+     * Verifies the session is paid and activates the subscription. Idempotent.
+     */
+    public void verifyAndCompleteSubscriptionPurchase(String sessionId) throws StripeException {
+        if (transactionRepository.existsByReferenceId(sessionId)) {
+            log.info("Session {} already processed — skipping", sessionId);
+            return;
+        }
+
+        Session session = Session.retrieve(sessionId);
+        log.info("Verifying subscription session {} — status: {} paymentStatus: {}",
+                sessionId, session.getStatus(), session.getPaymentStatus());
+
+        if (!"complete".equals(session.getStatus())
+                || !"paid".equals(session.getPaymentStatus())) {
+            throw new IllegalStateException("Session " + sessionId + " not paid");
+        }
+
+        String planId    = session.getMetadata().get("planId");
+        String userEmail = session.getMetadata().get("userEmail");
+
+        if (planId == null || userEmail == null) {
+            throw new IllegalStateException("Missing metadata on session " + sessionId);
+        }
+
+        handleSubscriptionPurchaseCompleted(sessionId, planId, userEmail);
     }
 
     /**
@@ -404,6 +530,11 @@ public class StripeService {
         return contract.getSalary() * Math.max(days, 1);
     }
 
+    private SessionCreateParams.Locale resolveLocale(String locale) {
+        if ("fr".equalsIgnoreCase(locale)) return SessionCreateParams.Locale.FR;
+        return SessionCreateParams.Locale.EN;
+    }
+
     private void recordTransaction(String userId, PointPack pack, String stripeRef) {
         PointTransaction tx = new PointTransaction();
         tx.setUserId(userId);
@@ -413,6 +544,18 @@ public class StripeService {
         tx.setReferenceId(stripeRef);
         tx.setDescription(pack.getName() + " — " + pack.getPoints() + " pts");
         tx.setCreatedAt(LocalDateTime.now());
+        transactionRepository.save(tx);
+    }
+
+    private void recordSubscriptionTransaction(String userId, SubscriptionPlan plan, double price, String stripeRef, LocalDateTime now) {
+        PointTransaction tx = new PointTransaction();
+        tx.setUserId(userId);
+        tx.setType("SUBSCRIBE_PLAN");
+        tx.setPoints(plan.getPointsPerMonth());
+        tx.setAmount(price);
+        tx.setReferenceId(stripeRef);
+        tx.setDescription("Abonnement " + plan.getName() + " — " + plan.getPointsPerMonth() + " pts");
+        tx.setCreatedAt(now);
         transactionRepository.save(tx);
     }
 

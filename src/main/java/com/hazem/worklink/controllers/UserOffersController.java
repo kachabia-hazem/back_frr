@@ -64,9 +64,37 @@ public class UserOffersController {
         return ResponseEntity.ok(userOffersService.getCompanySubscription(authentication.getName()));
     }
 
+    @DeleteMapping("/my-subscription")
+    @PreAuthorize("hasAuthority('COMPANY')")
+    public ResponseEntity<CompanySubscriptionResponse> cancelSubscription(Authentication authentication) {
+        return ResponseEntity.ok(userOffersService.cancelSubscription(authentication.getName()));
+    }
+
     @GetMapping("/my-company-balance")
     @PreAuthorize("hasAuthority('COMPANY')")
     public ResponseEntity<BalanceResponse> getMyCompanyBalance(Authentication authentication) {
         return ResponseEntity.ok(userOffersService.getCompanyBalance(authentication.getName()));
+    }
+
+    // ── Freelancer: subscribe + cancel + status ───────────────────────────────
+
+    @PostMapping("/subscriptions/{id}/freelancer-subscribe")
+    @PreAuthorize("hasAuthority('FREELANCER')")
+    public ResponseEntity<CompanySubscriptionResponse> subscribeFreelancerToPlan(
+            @PathVariable String id,
+            Authentication authentication) {
+        return ResponseEntity.ok(userOffersService.subscribeFreelancerToPlan(id, authentication.getName()));
+    }
+
+    @DeleteMapping("/my-freelancer-subscription")
+    @PreAuthorize("hasAuthority('FREELANCER')")
+    public ResponseEntity<CompanySubscriptionResponse> cancelFreelancerSubscription(Authentication authentication) {
+        return ResponseEntity.ok(userOffersService.cancelFreelancerSubscription(authentication.getName()));
+    }
+
+    @GetMapping("/my-freelancer-subscription")
+    @PreAuthorize("hasAuthority('FREELANCER')")
+    public ResponseEntity<CompanySubscriptionResponse> getFreelancerSubscription(Authentication authentication) {
+        return ResponseEntity.ok(userOffersService.getFreelancerSubscription(authentication.getName()));
     }
 }

@@ -87,6 +87,10 @@ public class StripeWebhookController {
                         String packId    = session.getMetadata().get("packId");
                         String userEmail = session.getMetadata().get("userEmail");
                         stripeService.handlePackPurchaseCompleted(session.getId(), packId, userEmail);
+                    } else if ("SUBSCRIPTION_PURCHASE".equals(type)) {
+                        String planId    = session.getMetadata().get("planId");
+                        String userEmail = session.getMetadata().get("userEmail");
+                        stripeService.handleSubscriptionPurchaseCompleted(session.getId(), planId, userEmail);
                     }
                 });
             }

@@ -34,6 +34,8 @@ public class AuthService {
     private final AiSearchClient aiSearchClient;
     private final RefreshTokenService refreshTokenService;
     private final N8nWebhookService n8nWebhookService;
+    private final PointTransactionRepository pointTransactionRepository;
+    private final PlatformSettingsRepository platformSettingsRepository;
 
     // Register Freelancer
     public AuthResponse registerFreelancer(RegisterFreelancerRequest request) {
@@ -63,7 +65,22 @@ public class AuthService {
         freelancer.setCompletedProjects(0);
         freelancer.setRating(0.0);
 
+        // Créditer le bonus de bienvenue
+        int welcomeBonus = platformSettingsRepository.findById("platform_default")
+                .map(PlatformSettings::getWelcomeBonus).orElse(25);
+        freelancer.setPointsBalance(welcomeBonus);
+
         Freelancer savedFreelancer = freelancerRepository.save(freelancer);
+
+        // Enregistrer la transaction bonus
+        PointTransaction welcomeTx = new PointTransaction();
+        welcomeTx.setUserId(savedFreelancer.getId());
+        welcomeTx.setType("WELCOME_BONUS");
+        welcomeTx.setPoints(welcomeBonus);
+        welcomeTx.setAmount(0);
+        welcomeTx.setDescription("Welcome gift — " + welcomeBonus + " free points to explore the platform");
+        welcomeTx.setCreatedAt(LocalDateTime.now());
+        pointTransactionRepository.save(welcomeTx);
 
         // Indexer dans le moteur AI
         aiSearchClient.indexFreelancer(savedFreelancer);
@@ -124,7 +141,22 @@ public class AuthService {
         company.setPostedProjects(0);
         company.setVerificationStatus(CompanyStatus.PENDING);
 
+        // Créditer le bonus de bienvenue
+        int welcomeBonus = platformSettingsRepository.findById("platform_default")
+                .map(PlatformSettings::getWelcomeBonus).orElse(25);
+        company.setPointsBalance(welcomeBonus);
+
         Company savedCompany = companyRepository.save(company);
+
+        // Enregistrer la transaction bonus
+        PointTransaction welcomeTx = new PointTransaction();
+        welcomeTx.setUserId(savedCompany.getId());
+        welcomeTx.setType("WELCOME_BONUS");
+        welcomeTx.setPoints(welcomeBonus);
+        welcomeTx.setAmount(0);
+        welcomeTx.setDescription("Welcome gift — " + welcomeBonus + " free points to explore the platform");
+        welcomeTx.setCreatedAt(LocalDateTime.now());
+        pointTransactionRepository.save(welcomeTx);
 
         // Déclencher l'analyse du trust score AI (asynchrone)
         aiSearchClient.computeCompanyTrustScore(savedCompany);

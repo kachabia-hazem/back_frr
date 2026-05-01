@@ -64,9 +64,10 @@ public class PaymentController {
     @PostMapping("/packs/checkout")
     public ResponseEntity<Map<String, String>> createPackCheckout(
             @RequestParam String packId,
+            @RequestParam(defaultValue = "en") String locale,
             @AuthenticationPrincipal UserDetails userDetails) {
         try {
-            String url = stripeService.createPackCheckoutSession(packId, userDetails.getUsername());
+            String url = stripeService.createPackCheckoutSession(packId, userDetails.getUsername(), locale);
             return ResponseEntity.ok(Map.of("checkoutUrl", url));
         } catch (StripeException e) {
             log.error("Stripe error creating checkout session for pack {}: {}", packId, e.getMessage());
@@ -104,6 +105,42 @@ public class PaymentController {
             return ResponseEntity.ok(Map.of("status", "credited"));
         } catch (StripeException e) {
             log.error("Stripe error verifying session {}: {}", sessionId, e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** POST /api/payments/subscriptions/checkout
+     *  Creates a Stripe Checkout Session for a subscription plan.
+     *  Returns the Stripe-hosted checkout URL. */
+    @PostMapping("/subscriptions/checkout")
+    public ResponseEntity<Map<String, String>> createSubscriptionCheckout(
+            @RequestParam String planId,
+            @RequestParam(defaultValue = "en") String locale,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            String url = stripeService.createSubscriptionCheckoutSession(planId, userDetails.getUsername(), locale);
+            return ResponseEntity.ok(Map.of("checkoutUrl", url));
+        } catch (StripeException e) {
+            log.error("Stripe error creating checkout session for plan {}: {}", planId, e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** POST /api/payments/subscriptions/verify
+     *  Called from /payment/success after Stripe Checkout redirect.
+     *  Verifies session is paid and activates subscription — no webhook needed. */
+    @PostMapping("/subscriptions/verify")
+    public ResponseEntity<Map<String, String>> verifySubscriptionPurchase(
+            @RequestParam String sessionId) {
+        try {
+            stripeService.verifyAndCompleteSubscriptionPurchase(sessionId);
+            return ResponseEntity.ok(Map.of("status", "activated"));
+        } catch (StripeException e) {
+            log.error("Stripe error verifying subscription session {}: {}", sessionId, e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

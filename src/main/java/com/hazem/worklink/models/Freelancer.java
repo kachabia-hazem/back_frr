@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -96,4 +97,9 @@ public class Freelancer extends User {
 
     // ── Points balance ────────────────────────────────────────────────────────
     private int pointsBalance = 0;
+
+    // ── Subscription ──────────────────────────────────────────────────────────
+    private String subscriptionPlanId;
+    private LocalDateTime subscriptionStartDate;
+    private LocalDateTime subscriptionExpiresAt;
 }

@@ -59,7 +59,7 @@ public class ApplicationService {
         // Deduct points for applying (throws InsufficientPointsException if balance too low)
         userOffersService.deductFreelancerPoints(
                 freelancer.getId(), "APPLICATION",
-                UserOffersService.COST_APPLICATION,
+                userOffersService.getApplicationCost(),
                 "Candidature — " + mission.getJobTitle(),
                 mission.getId());
 
@@ -257,7 +257,7 @@ public class ApplicationService {
         // Deduct points for AI ranking (throws InsufficientPointsException if balance too low)
         userOffersService.deductCompanyPoints(
                 company.getId(), "AI_MATCHING",
-                UserOffersService.COST_AI_RANKING,
+                userOffersService.getAiRankingCost(),
                 "Classement IA — " + mission.getJobTitle(),
                 missionId);
 

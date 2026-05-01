@@ -25,6 +25,7 @@ public class UserOffersService {
     private final CompanyRepository companyRepository;
     private final PointTransactionRepository transactionRepository;
     private final AdminPointsService adminPointsService;
+    private final PlatformSettingsRepository platformSettingsRepository;
 
     // ── Public catalog ─────────────────────────────────────────────────────────
 
@@ -111,6 +112,95 @@ public class UserOffersService {
         return buildCompanySubscription(company);
     }
 
+    // ── Freelancer: subscribe to plan ─────────────────────────────────────────
+
+    public CompanySubscriptionResponse subscribeFreelancerToPlan(String planId, String email) {
+        SubscriptionPlan plan = subscriptionRepository.findById(planId)
+                .orElseThrow(() -> new ResourceNotFoundException("Plan not found: " + planId));
+        if (!Boolean.TRUE.equals(plan.getIsActive()))
+            throw new IllegalStateException("Plan not available");
+
+        Freelancer freelancer = freelancerRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found"));
+
+        LocalDateTime now = LocalDateTime.now();
+        freelancer.setSubscriptionPlanId(planId);
+        freelancer.setSubscriptionStartDate(now);
+        freelancer.setSubscriptionExpiresAt(now.plusMonths(1));
+        freelancer.setPointsBalance(freelancer.getPointsBalance() + plan.getPointsPerMonth());
+        freelancerRepository.save(freelancer);
+
+        double price = Boolean.TRUE.equals(plan.getPromoEnabled()) && plan.getPromoDiscountPercent() > 0
+                ? Math.round(plan.getPricePerMonth() * (1 - plan.getPromoDiscountPercent() / 100.0) * 1000.0) / 1000.0
+                : plan.getPricePerMonth();
+
+        PointTransaction tx = new PointTransaction();
+        tx.setUserId(freelancer.getId());
+        tx.setType("SUBSCRIBE_PLAN");
+        tx.setReferenceId(planId);
+        tx.setPoints(plan.getPointsPerMonth());
+        tx.setAmount(price);
+        tx.setDescription("Abonnement " + plan.getName());
+        tx.setCreatedAt(now);
+        transactionRepository.save(tx);
+
+        return buildFreelancerSubscription(freelancer);
+    }
+
+    public CompanySubscriptionResponse cancelFreelancerSubscription(String email) {
+        Freelancer freelancer = freelancerRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found"));
+
+        if (freelancer.getSubscriptionPlanId() == null)
+            throw new IllegalStateException("No active subscription");
+
+        freelancer.setSubscriptionPlanId(null);
+        freelancer.setSubscriptionStartDate(null);
+        freelancer.setSubscriptionExpiresAt(null);
+        freelancerRepository.save(freelancer);
+
+        return buildFreelancerSubscription(freelancer);
+    }
+
+    public CompanySubscriptionResponse getFreelancerSubscription(String email) {
+        Freelancer freelancer = freelancerRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found"));
+        return buildFreelancerSubscription(freelancer);
+    }
+
+    private CompanySubscriptionResponse buildFreelancerSubscription(Freelancer freelancer) {
+        if (freelancer.getSubscriptionPlanId() == null) {
+            return new CompanySubscriptionResponse(false, freelancer.getPointsBalance(), null, null, null);
+        }
+        SubscriptionPlan plan = subscriptionRepository.findById(freelancer.getSubscriptionPlanId()).orElse(null);
+        if (plan == null) {
+            return new CompanySubscriptionResponse(false, freelancer.getPointsBalance(), null, null, null);
+        }
+        boolean active = freelancer.getSubscriptionExpiresAt() != null
+                && freelancer.getSubscriptionExpiresAt().isAfter(LocalDateTime.now());
+        return new CompanySubscriptionResponse(
+                active, freelancer.getPointsBalance(), toSubResponse(plan),
+                freelancer.getSubscriptionStartDate(), freelancer.getSubscriptionExpiresAt()
+        );
+    }
+
+    // ── Company: cancel subscription ──────────────────────────────────────────
+
+    public CompanySubscriptionResponse cancelSubscription(String email) {
+        Company company = companyRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found"));
+
+        if (company.getSubscriptionPlanId() == null)
+            throw new IllegalStateException("No active subscription");
+
+        company.setSubscriptionPlanId(null);
+        company.setSubscriptionStartDate(null);
+        company.setSubscriptionExpiresAt(null);
+        companyRepository.save(company);
+
+        return buildCompanySubscription(company);
+    }
+
     // ── Freelancer: balance + history ──────────────────────────────────────────
 
     public BalanceResponse getFreelancerBalance(String email) {
@@ -140,9 +230,14 @@ public class UserOffersService {
 
     // ── Point deduction (used by business actions) ─────────────────────────────
 
-    public static final int COST_APPLICATION = 3;
-    public static final int COST_AI_MATCHING  = 5;
-    public static final int COST_AI_RANKING   = 5;
+    private com.hazem.worklink.models.PlatformSettings loadSettings() {
+        return platformSettingsRepository.findById("platform_default")
+                .orElseGet(() -> platformSettingsRepository.save(new com.hazem.worklink.models.PlatformSettings()));
+    }
+
+    public int getApplicationCost()  { return loadSettings().getApplicationCost(); }
+    public int getAiMatchingCost()   { return loadSettings().getAiMatchingCost(); }
+    public int getAiRankingCost()    { return loadSettings().getAiRankingCost(); }
 
     public void deductFreelancerPoints(String freelancerId, String type, int cost, String description, String referenceId) {
         Freelancer freelancer = freelancerRepository.findById(freelancerId)
