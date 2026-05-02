@@ -281,16 +281,46 @@ public class MissionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found"));
 
         List<AiSearchClient.AiSearchResult> aiResults = aiSearchClient.recommendMissions(freelancer);
-        if (aiResults.isEmpty()) return List.of();
 
-        List<String> ids = aiResults.stream()
-                .map(AiSearchClient.AiSearchResult::missionId)
+        if (!aiResults.isEmpty()) {
+            List<String> ids = aiResults.stream()
+                    .map(AiSearchClient.AiSearchResult::missionId)
+                    .collect(Collectors.toList());
+
+            Map<String, Mission> missionMap = missionRepository.findAllById(ids).stream()
+                    .collect(Collectors.toMap(Mission::getId, m -> m));
+
+            Map<String, Company> companyMap = missionMap.values().stream()
+                    .map(Mission::getCompanyId)
+                    .filter(id -> id != null)
+                    .distinct()
+                    .collect(Collectors.toMap(
+                            id -> id,
+                            id -> companyRepository.findById(id).orElse(null),
+                            (a, b) -> a
+                    ));
+
+            List<AiMissionResult> aiMapped = aiResults.stream()
+                    .filter(r -> missionMap.containsKey(r.missionId()))
+                    .map(r -> {
+                        Mission m = missionMap.get(r.missionId());
+                        Company c = companyMap.get(m.getCompanyId());
+                        return new AiMissionResult(MissionResponse.from(m, c), r.score());
+                    })
+                    .collect(Collectors.toList());
+
+            if (!aiMapped.isEmpty()) return aiMapped;
+        }
+
+        // Fallback: AI unavailable or no matches — return 6 most recent open missions
+        List<Mission> recent = missionRepository.findByStatus(MissionStatus.OPEN).stream()
+                .sorted(Comparator.comparing(Mission::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(6)
                 .collect(Collectors.toList());
 
-        Map<String, Mission> missionMap = missionRepository.findAllById(ids).stream()
-                .collect(Collectors.toMap(Mission::getId, m -> m));
+        if (recent.isEmpty()) return List.of();
 
-        Map<String, Company> companyMap = missionMap.values().stream()
+        Map<String, Company> fallbackCompanyMap = recent.stream()
                 .map(Mission::getCompanyId)
                 .filter(id -> id != null)
                 .distinct()
@@ -300,13 +330,8 @@ public class MissionService {
                         (a, b) -> a
                 ));
 
-        return aiResults.stream()
-                .filter(r -> missionMap.containsKey(r.missionId()))
-                .map(r -> {
-                    Mission m = missionMap.get(r.missionId());
-                    Company c = companyMap.get(m.getCompanyId());
-                    return new AiMissionResult(MissionResponse.from(m, c), r.score());
-                })
+        return recent.stream()
+                .map(m -> new AiMissionResult(MissionResponse.from(m, fallbackCompanyMap.get(m.getCompanyId())), 0.0))
                 .collect(Collectors.toList());
     }
 

@@ -395,10 +395,31 @@ public class ContractService {
             Path filePath = contractsPath.resolve(fileName).normalize();
             Resource resource = new UrlResource(filePath.toUri());
             if (resource.exists() && resource.isReadable()) return resource;
+
+            // File missing — auto-regenerate from DB
+            String contractId = extractContractIdFromFileName(fileName);
+            if (contractId != null) {
+                contractRepository.findById(contractId).ifPresent(contract -> {
+                    try { generateContractPdf(contract, true); }
+                    catch (IOException e) { log.error("Auto-regen failed for {}: {}", fileName, e.getMessage()); }
+                });
+                Resource regen = new UrlResource(filePath.toUri());
+                if (regen.exists() && regen.isReadable()) return regen;
+            }
+
             throw new ResourceNotFoundException("Contract file not found: " + fileName);
         } catch (MalformedURLException e) {
             throw new RuntimeException("Bad file path: " + fileName, e);
         }
+    }
+
+    private String extractContractIdFromFileName(String fileName) {
+        // "contract-{id}-signed.pdf" or "contract-{id}.pdf"
+        if (!fileName.startsWith("contract-") || !fileName.endsWith(".pdf")) return null;
+        String id = fileName.substring("contract-".length())
+                            .replace("-signed.pdf", "")
+                            .replace(".pdf", "");
+        return id.isEmpty() ? null : id;
     }
 
     // ─── Auto-signature image generator ──────────────────────────────────────
@@ -776,6 +797,138 @@ public class ContractService {
             cs.showText("WorkLink Platform  |  Freelance Mission Contract  |  Status: "
                     + (freelancerSigned ? "SIGNED" : "PENDING SIGNATURE"));
             cs.endText();
+        }
+
+        // ── PAGE 2: General Platform Terms & Conditions ──────────────────────
+        PDPage page2 = new PDPage(PDRectangle.A4);
+        doc.addPage(page2);
+        try (PDPageContentStream cs2 = new PDPageContentStream(doc, page2)) {
+            // Header (same letterhead as page 1)
+            cs2.setNonStrokingColor(DARK_NAVY);
+            cs2.addRect(0, pageHeight - 10, pageWidth, 10);
+            cs2.fill();
+            cs2.setNonStrokingColor(PRIMARY);
+            cs2.addRect(0, pageHeight - 58, pageWidth, 48);
+            cs2.fill();
+            cs2.setNonStrokingColor(DARK_NAVY);
+            cs2.addRect(0, pageHeight - 68, pageWidth, 10);
+            cs2.fill();
+            fillOval(cs2, pageWidth - 118, pageHeight - 92, 75, 102, DARK_NAVY);
+            fillOval(cs2, pageWidth - 72,  pageHeight - 86, 60, 90,  PRIMARY);
+            fillOval(cs2, pageWidth - 52,  pageHeight - 80, 40, 74,  TEAL_DARK);
+
+            cs2.beginText(); cs2.setFont(fontBold, 17); cs2.setNonStrokingColor(PRIMARY);
+            cs2.newLineAtOffset(margin, pageHeight - 98); cs2.showText("Work"); cs2.endText();
+            float wp2 = fontBold.getStringWidth("Work") / 1000f * 17f;
+            cs2.beginText(); cs2.setFont(fontBold, 17); cs2.setNonStrokingColor(DARK_NAVY);
+            cs2.newLineAtOffset(margin + wp2, pageHeight - 98); cs2.showText("Link"); cs2.endText();
+            cs2.beginText(); cs2.setFont(fontReg, 7.5f); cs2.setNonStrokingColor(TEXT_GRAY);
+            cs2.newLineAtOffset(margin, pageHeight - 110); cs2.showText("FREELANCE PLATFORM"); cs2.endText();
+
+            // Page title
+            float y2 = pageHeight - 133;
+            cs2.beginText(); cs2.setFont(fontBold, 12); cs2.setNonStrokingColor(DARK_NAVY);
+            cs2.newLineAtOffset(margin, y2);
+            cs2.showText("ANNEX A - GENERAL PLATFORM TERMS & CONDITIONS"); cs2.endText();
+            y2 -= 8;
+            drawLine(cs2, margin, y2, pageWidth - margin, PRIMARY);
+            y2 -= 18;
+
+            // Section data: {header, body}
+            String[][] sections2 = {
+                {
+                    "7. PAYMENT AND ESCROW CONDITIONS",
+                    "7.1  Upon contract signature by both parties, the Employer authorizes payment via the integrated\n" +
+                    "     Stripe payment system. The authorized amount is held in secure escrow on the WorkLink platform.\n" +
+                    "7.2  Escrowed funds are released to the Freelancer exclusively after the Employer formally validates\n" +
+                    "     the completed mission deliverables within the platform.\n" +
+                    "7.3  A platform service fee applies to each transaction. The fee is shown prior to payment\n" +
+                    "     authorization and is deducted from the total amount before disbursement to the Freelancer.\n" +
+                    "7.4  In the event of cancellation, escrowed amounts may be refunded to the Employer minus any\n" +
+                    "     applicable non-refundable platform fees, subject to the outcome of any active dispute."
+                },
+                {
+                    "8. DISPUTE RESOLUTION PROCEDURE (LEGIT)",
+                    "8.1  Either party may file a formal dispute (Legit) through the WorkLink platform dashboard at any\n" +
+                    "     time during the active mission period by selecting \"Signaler un Litige\".\n" +
+                    "8.2  Upon filing, the mission status changes automatically to DISPUTE. All work submissions and\n" +
+                    "     payment releases are suspended until the dispute is fully resolved.\n" +
+                    "8.3  Both parties may submit supporting evidence including documents, screenshots, and files\n" +
+                    "     through the platform's dispute interface. Evidence must be factual and relevant.\n" +
+                    "8.4  WorkLink administrators review all evidence impartially and may contact either party for\n" +
+                    "     additional information. The administrator's decision is final and binding on both parties.\n" +
+                    "8.5  The resolution may include full payment release to the Freelancer, partial payment,\n" +
+                    "     full refund to the Employer, or other remedies deemed appropriate by the platform.\n" +
+                    "8.6  Filing false or frivolous disputes constitutes a breach of platform rules and may\n" +
+                    "     result in immediate account suspension and forfeiture of escrowed funds."
+                },
+                {
+                    "9. PLATFORM RULES AND OBLIGATIONS",
+                    "9.1  All communications, deliverables, and payments related to this mission must be conducted\n" +
+                    "     exclusively through the WorkLink platform. Bypassing platform processes is prohibited.\n" +
+                    "9.2  Attempts to circumvent platform fees by contracting directly outside the platform are\n" +
+                    "     strictly prohibited and may result in immediate account suspension and legal action.\n" +
+                    "9.3  Both parties represent that all information provided on their WorkLink profiles and in\n" +
+                    "     connection with this contract is accurate, complete, and up to date.\n" +
+                    "9.4  Both parties agree to maintain confidentiality of all sensitive information exchanged\n" +
+                    "     through the platform in connection with this mission.\n" +
+                    "9.5  Prohibited conduct: harassment, fraud, impersonation, submission of false credentials,\n" +
+                    "     and any discriminatory behavior. Violations may result in account termination."
+                },
+                {
+                    "10. DATA PROTECTION",
+                    "WorkLink processes personal data in compliance with applicable Tunisian data protection laws.\n" +
+                    "Profile information and AI matching data are used solely for platform functionality and service\n" +
+                    "improvement. Personal data is never sold to third parties."
+                },
+                {
+                    "11. LIMITATION OF LIABILITY",
+                    "WorkLink operates as an intermediary platform facilitating connections between companies and\n" +
+                    "freelancers. The platform is not a party to the work performed under this contract and accepts\n" +
+                    "no liability for the quality, timeliness, or outcome of the mission, except as expressly\n" +
+                    "provided in these General Platform Terms & Conditions."
+                }
+            };
+
+            for (String[] section : sections2) {
+                if (y2 < 75) break;
+                drawSectionHeader(cs2, fontBold, section[0], margin, y2, contentWidth, PRIMARY);
+                y2 -= 22;
+                String[] bodyLines = wrapText(section[1], fontReg, 9, contentWidth);
+                for (String line : bodyLines) {
+                    if (y2 < 75) break;
+                    cs2.beginText(); cs2.setFont(fontReg, 9); cs2.setNonStrokingColor(SLATE);
+                    cs2.newLineAtOffset(margin, y2); cs2.showText(line); cs2.endText();
+                    y2 -= 13;
+                }
+                y2 -= 8;
+            }
+
+            // Closing acknowledgment note
+            if (y2 > 80) {
+                y2 -= 4;
+                drawLine(cs2, margin, y2, pageWidth - margin, GRAY_BORDER);
+                y2 -= 15;
+                String note = "By signing the main contract, both parties acknowledge having read and agreed to this Annex A.";
+                for (String line : wrapText(note, fontObliq, 9, contentWidth)) {
+                    if (y2 < 75) break;
+                    cs2.beginText(); cs2.setFont(fontObliq, 9); cs2.setNonStrokingColor(TEXT_GRAY);
+                    cs2.newLineAtOffset(margin, y2); cs2.showText(line); cs2.endText();
+                    y2 -= 13;
+                }
+            }
+
+            // Footer (same as page 1)
+            fillOval(cs2, 42,  -20, 75, 102, DARK_NAVY);
+            fillOval(cs2, -2,  -14, 60, 90,  PRIMARY);
+            fillOval(cs2, -20, -8,  40, 74,  TEAL_DARK);
+            cs2.setNonStrokingColor(DARK_NAVY); cs2.addRect(0, 0, pageWidth, 10); cs2.fill();
+            cs2.setNonStrokingColor(PRIMARY);   cs2.addRect(0, 10, pageWidth, 42); cs2.fill();
+            cs2.setNonStrokingColor(DARK_NAVY); cs2.addRect(0, 52, pageWidth, 10); cs2.fill();
+            cs2.beginText(); cs2.setFont(fontReg, 8); cs2.setNonStrokingColor(Color.WHITE);
+            cs2.newLineAtOffset(margin + 65, 27);
+            cs2.showText("WorkLink Platform  |  Annex A - General Terms & Conditions  |  Page 2 of 2");
+            cs2.endText();
         }
 
         doc.save(filePath.toFile());

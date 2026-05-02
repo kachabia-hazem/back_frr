@@ -27,6 +27,7 @@ public class FileStorageService {
     private Path companyLogosPath;
     private Path portfolioImagesPath;
     private Path deliverablesPath;
+    private Path legitEvidencePath;
 
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     private static final long MAX_CV_SIZE = 10 * 1024 * 1024; // 10MB for CVs
@@ -45,12 +46,14 @@ public class FileStorageService {
             companyLogosPath = Paths.get(uploadDir, "company-logos").toAbsolutePath().normalize();
             portfolioImagesPath = Paths.get(uploadDir, "portfolio-images").toAbsolutePath().normalize();
             deliverablesPath = Paths.get(uploadDir, "deliverables").toAbsolutePath().normalize();
+            legitEvidencePath = Paths.get(uploadDir, "legit-evidence").toAbsolutePath().normalize();
             Files.createDirectories(certificatesPath);
             Files.createDirectories(profilePicturesPath);
             Files.createDirectories(cvsPath);
             Files.createDirectories(companyLogosPath);
             Files.createDirectories(portfolioImagesPath);
             Files.createDirectories(deliverablesPath);
+            Files.createDirectories(legitEvidencePath);
         } catch (IOException e) {
             throw new RuntimeException("Could not create upload directories", e);
         }
@@ -174,6 +177,27 @@ public class FileStorageService {
 
     public Path getDeliverablePath(String fileName) {
         return deliverablesPath.resolve(fileName).normalize();
+    }
+
+    public String storeLegitEvidence(MultipartFile file) {
+        if (file.isEmpty()) throw new IllegalArgumentException("File is empty");
+        if (file.getSize() > MAX_FILE_SIZE)
+            throw new IllegalArgumentException("File size exceeds maximum limit of 5MB");
+        String ext = getFileExtension(StringUtils.cleanPath(file.getOriginalFilename())).toLowerCase();
+        if (!Arrays.asList("jpg", "jpeg", "png", "pdf").contains(ext))
+            throw new IllegalArgumentException("File type not allowed. Allowed: jpg, jpeg, png, pdf");
+
+        String newFileName = UUID.randomUUID().toString() + "." + ext;
+        try {
+            Files.copy(file.getInputStream(), legitEvidencePath.resolve(newFileName), StandardCopyOption.REPLACE_EXISTING);
+            return "/api/files/legit-evidence/" + newFileName;
+        } catch (IOException e) {
+            throw new RuntimeException("Could not store legit evidence", e);
+        }
+    }
+
+    public Path getLegitEvidencePath(String fileName) {
+        return legitEvidencePath.resolve(fileName).normalize();
     }
 
     private void validateFile(MultipartFile file) {

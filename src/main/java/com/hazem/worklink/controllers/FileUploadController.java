@@ -274,4 +274,40 @@ public class FileUploadController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    @PostMapping("/legit-evidence")
+    public ResponseEntity<Map<String, String>> uploadLegitEvidence(@RequestParam("file") MultipartFile file) {
+        try {
+            String fileUrl = fileStorageService.storeLegitEvidence(file);
+            Map<String, String> response = new HashMap<>();
+            response.put("url", fileUrl);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @GetMapping("/legit-evidence/{fileName:.+}")
+    public ResponseEntity<Resource> getLegitEvidence(@PathVariable String fileName) {
+        try {
+            Path filePath = fileStorageService.getLegitEvidencePath(fileName);
+            Resource resource = new UrlResource(filePath.toUri());
+            if (resource.exists() && resource.isReadable()) {
+                String contentType = Files.probeContentType(filePath);
+                if (contentType == null) contentType = "application/octet-stream";
+                return ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(contentType))
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                        .body(resource);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (MalformedURLException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }

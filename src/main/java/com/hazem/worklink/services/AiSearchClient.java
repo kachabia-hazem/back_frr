@@ -271,7 +271,7 @@ public class AiSearchClient {
             // Mission data
             body.put("missionTitle",               nullSafe(mission.getJobTitle()));
             body.put("missionDescription",         nullSafe(mission.getDescription()));
-            body.put("missionRequiredSkills",       nullSafe(mission.getRequiredSkills()));
+            body.put("missionRequiredSkills",      combinedSkills(mission.getRequiredSkills(), mission.getSpeciality()));
             body.put("missionTechnicalEnvironment", nullSafe(mission.getTechnicalEnvironment()));
 
             Map<String, Object> response = restTemplate.postForObject(
@@ -303,7 +303,7 @@ public class AiSearchClient {
             body.put("missionId",                    nullSafe(mission.getId()));
             body.put("missionTitle",                 nullSafe(mission.getJobTitle()));
             body.put("missionDescription",           nullSafe(mission.getDescription()));
-            body.put("missionRequiredSkills",        nullSafe(mission.getRequiredSkills()));
+            body.put("missionRequiredSkills",        combinedSkills(mission.getRequiredSkills(), mission.getSpeciality()));
             body.put("missionTechnicalEnvironment",  nullSafe(mission.getTechnicalEnvironment()));
             body.put("missionYearsOfExperience",     mission.getYearsOfExperience());
             body.put("candidates",                   candidates);
@@ -334,6 +334,14 @@ public class AiSearchClient {
 
     private String nullSafe(String s) {
         return s != null ? s : "";
+    }
+
+    private String combinedSkills(String requiredSkills, String speciality) {
+        String a = nullSafe(requiredSkills).trim();
+        String b = nullSafe(speciality).trim();
+        if (a.isEmpty()) return b;
+        if (b.isEmpty()) return a;
+        return a + ", " + b;
     }
 
     // ── Company Trust Score ───────────────────────────────────────────────────

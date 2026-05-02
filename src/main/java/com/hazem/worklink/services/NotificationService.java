@@ -684,4 +684,21 @@ public class NotificationService {
                 points + " points ont été ajoutés à votre solde suite à l'achat du pack \"" + packName + "\".",
                 "WorkLink", null, "/company-balance");
     }
+
+    public void sendLegitResponseNotification(String recipientId, String subject, String body) {
+        build(recipientId, NotificationType.LEGIT_RESPONSE_FROM_ADMIN,
+                subject, body, "Équipe WorkLink", "admin", "/dashboard");
+    }
+
+    public void sendLegitOpenedNotification(String recipientId, String initiatorName,
+                                             String missionTitle, String missionId) {
+        String message = String.format(
+                "Un litige a été ouvert par %s concernant la mission \"%s\".\n" +
+                "La mission est maintenant en état de litige. L'équipe administrative a été notifiée et traitera votre dossier dans les plus brefs délais.",
+                initiatorName, missionTitle);
+        build(recipientId, NotificationType.LEGIT_OPENED,
+                "Litige ouvert — " + missionTitle,
+                message,
+                initiatorName, null, "/active-mission/" + missionId);
+    }
 }

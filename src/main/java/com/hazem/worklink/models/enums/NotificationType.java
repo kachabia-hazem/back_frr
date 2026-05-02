@@ -55,5 +55,9 @@ public enum NotificationType {
     // ── Payment notifications ─────────────────────────────────────────
     CONTRACT_PAYMENT_AUTHORIZED,        // both: payment secured in escrow
     CONTRACT_PAYMENT_RELEASED,          // freelancer: funds released after validation
-    PACK_PURCHASED                      // user: points credited after Stripe checkout
+    PACK_PURCHASED,                     // user: points credited after Stripe checkout
+
+    // ── Legit (dispute) notifications ────────────────────────────────
+    LEGIT_OPENED,                       // both parties: a dispute was opened on a mission
+    LEGIT_RESPONSE_FROM_ADMIN           // user: admin sent a response to their legit
 }
