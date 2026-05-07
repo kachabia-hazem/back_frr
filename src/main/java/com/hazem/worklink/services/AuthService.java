@@ -254,7 +254,7 @@ public class AuthService {
         var freelancer = freelancerRepository.findByEmail(email);
         if (freelancer.isPresent()) {
             if (!Boolean.TRUE.equals(freelancer.get().getIsActive())) {
-                throw new UserBannedException(freelancer.get().getBanReason());
+                throw new UserBannedException(freelancer.get().getBanReason(), freelancer.get().getId(), "FREELANCER");
             }
             userId = freelancer.get().getId();
             role = freelancer.get().getRole();
@@ -265,7 +265,7 @@ public class AuthService {
             var company = companyRepository.findByEmail(email);
             if (company.isPresent()) {
                 if (!Boolean.TRUE.equals(company.get().getIsActive())) {
-                    throw new UserBannedException(company.get().getBanReason());
+                    throw new UserBannedException(company.get().getBanReason(), company.get().getId(), "COMPANY");
                 }
                 userId = company.get().getId();
                 role = company.get().getRole();

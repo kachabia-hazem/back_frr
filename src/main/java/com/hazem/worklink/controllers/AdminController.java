@@ -158,4 +158,5 @@ public class AdminController {
     public ResponseEntity<List<Admin>> getAllAdmins() {
         return ResponseEntity.ok(adminService.getAllAdmins());
     }
+
 }

@@ -49,6 +49,8 @@ public class GlobalExceptionHandler {
         Map<String, String> error = new HashMap<>();
         error.put("message", ex.getMessage());
         error.put("banReason", ex.getBanReason() != null ? ex.getBanReason() : "");
+        error.put("userId", ex.getUserId() != null ? ex.getUserId() : "");
+        error.put("userType", ex.getUserType() != null ? ex.getUserType() : "");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 

@@ -27,6 +27,18 @@ public class ReportController {
         return ResponseEntity.ok(reportService.createReport(req, auth.getName()));
     }
 
+    @PostMapping("/api/reports/public")
+    public ResponseEntity<Report> createPublicReport(@RequestBody java.util.Map<String, String> body) {
+        String email = body.get("email");
+        if (email == null || email.isBlank()) return ResponseEntity.badRequest().build();
+        CreateReportRequest req = new CreateReportRequest();
+        req.setType(com.hazem.worklink.models.enums.ReportType.valueOf(body.getOrDefault("type", "COMPTE_INJUSTE")));
+        req.setDescription(body.getOrDefault("description", ""));
+        String customType = body.get("customType");
+        if (customType != null && !customType.isBlank()) req.setCustomType(customType);
+        return ResponseEntity.ok(reportService.createReport(req, email));
+    }
+
     // ─── Admin endpoints ──────────────────────────────────────────────────────
 
     @GetMapping("/api/admin/reports")

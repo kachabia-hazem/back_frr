@@ -561,6 +561,7 @@ public class ContractService {
         float pageHeight = page.getMediaBox().getHeight();  // 842
         float margin = 55f;
         float contentWidth = pageWidth - 2 * margin;
+        float colW = contentWidth / 2 - 8;
 
         try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
 
@@ -674,7 +675,6 @@ public class ContractService {
             drawSectionHeader(cs, fontBold, "PARTIES INVOLVED", margin, y, contentWidth, PRIMARY);
 
             y -= 20;
-            float colW = contentWidth / 2 - 8;
 
             // Employer box (light teal + PRIMARY accent)
             drawInfoBox(cs, fontBold, fontReg, margin, y - 65, colW, 72,
@@ -712,7 +712,7 @@ public class ContractService {
             y -= 20;
             String[] termLines = wrapText(contract.getTerms() != null ? contract.getTerms() : "", fontReg, 10, contentWidth);
             for (String line : termLines) {
-                if (y < 195) break;
+                if (y < 130) break;
                 cs.beginText();
                 cs.setFont(fontReg, 10);
                 cs.setNonStrokingColor(SLATE);
@@ -722,48 +722,8 @@ public class ContractService {
                 y -= 14;
             }
 
-            // ── SIGNATURES ────────────────────────────────────────────────────
-            y = 178;
-            drawLine(cs, margin, y + 5, pageWidth - margin, GRAY_BORDER);
-            drawSectionHeader(cs, fontBold, "SIGNATURES", margin, y - 8, contentWidth, PRIMARY);
-
-            float sigY = y - 78;
-            boolean companySigned = contract.getCompanySignedAt() != null;
+            boolean companySigned   = contract.getCompanySignedAt() != null;
             boolean freelancerSigned = contract.getStatus() == ContractStatus.SIGNED;
-
-            drawSignatureBlock(cs, fontBold, fontReg, fontObliq,
-                    margin, sigY, colW, "Employer Signature", contract.getCompanyName(),
-                    contract.getCompanySignedAt(), companySigned);
-
-            drawSignatureBlock(cs, fontBold, fontReg, fontObliq,
-                    margin + colW + 16, sigY, colW,
-                    "Freelancer Signature", contract.getFreelancerName(),
-                    contract.getSignedAt(), freelancerSigned);
-
-            if (withSignature && freelancerSigned && contract.getSignatureImageBase64() != null) {
-                try {
-                    String b64 = contract.getSignatureImageBase64();
-                    if (b64.contains(",")) b64 = b64.split(",")[1];
-                    byte[] imgBytes = Base64.getDecoder().decode(b64);
-                    PDImageXObject sigImage = PDImageXObject.createFromByteArray(doc, imgBytes, "freelancer-sig");
-                    cs.drawImage(sigImage, margin + colW + 16, sigY + 10, 140, 50);
-                } catch (Exception e) {
-                    log.warn("Could not embed freelancer signature image: {}", e.getMessage());
-                }
-            }
-
-            if (withSignature && companySigned && contract.getCompanySignatureImageBase64() != null) {
-                try {
-                    String b64 = contract.getCompanySignatureImageBase64();
-                    if (b64.contains(",")) b64 = b64.split(",")[1];
-                    byte[] imgBytes = Base64.getDecoder().decode(b64);
-                    PDImageXObject sigImage = PDImageXObject.createFromByteArray(doc, imgBytes, "company-sig");
-                    // Display as a square stamp (200x195 → 75x73 in PDF units)
-                    cs.drawImage(sigImage, margin + 5, sigY - 10, 75, 73);
-                } catch (Exception e) {
-                    log.warn("Could not embed company signature image: {}", e.getMessage());
-                }
-            }
 
             // ══════════════════════════════════════════════════════════════════
             // FOOTER — Letterhead style (mirrored bottom)
@@ -825,68 +785,66 @@ public class ContractService {
             cs2.beginText(); cs2.setFont(fontReg, 7.5f); cs2.setNonStrokingColor(TEXT_GRAY);
             cs2.newLineAtOffset(margin, pageHeight - 110); cs2.showText("FREELANCE PLATFORM"); cs2.endText();
 
-            // Page title
+            // Page title (matching page 1 style)
             float y2 = pageHeight - 133;
-            cs2.beginText(); cs2.setFont(fontBold, 12); cs2.setNonStrokingColor(DARK_NAVY);
+            cs2.beginText(); cs2.setFont(fontBold, 13); cs2.setNonStrokingColor(DARK_NAVY);
             cs2.newLineAtOffset(margin, y2);
-            cs2.showText("ANNEX A - GENERAL PLATFORM TERMS & CONDITIONS"); cs2.endText();
-            y2 -= 8;
+            cs2.showText("ANNEX A — GENERAL PLATFORM TERMS & CONDITIONS"); cs2.endText();
+
+            String p2label = "Page 2 of 2";
+            float p2w = fontReg.getStringWidth(p2label) / 1000f * 9f;
+            cs2.beginText(); cs2.setFont(fontReg, 9); cs2.setNonStrokingColor(TEXT_GRAY);
+            cs2.newLineAtOffset(pageWidth - margin - p2w, y2); cs2.showText(p2label); cs2.endText();
+
+            cs2.beginText(); cs2.setFont(fontObliq, 8); cs2.setNonStrokingColor(TEXT_GRAY);
+            cs2.newLineAtOffset(margin, y2 - 13);
+            cs2.showText("This annex forms an integral part of the contract and is binding upon both parties."); cs2.endText();
+            y2 -= 20;
             drawLine(cs2, margin, y2, pageWidth - margin, PRIMARY);
-            y2 -= 18;
+            y2 -= 16;
 
             // Section data: {header, body}
             String[][] sections2 = {
                 {
-                    "7. PAYMENT AND ESCROW CONDITIONS",
-                    "7.1  Upon contract signature by both parties, the Employer authorizes payment via the integrated\n" +
-                    "     Stripe payment system. The authorized amount is held in secure escrow on the WorkLink platform.\n" +
-                    "7.2  Escrowed funds are released to the Freelancer exclusively after the Employer formally validates\n" +
-                    "     the completed mission deliverables within the platform.\n" +
-                    "7.3  A platform service fee applies to each transaction. The fee is shown prior to payment\n" +
-                    "     authorization and is deducted from the total amount before disbursement to the Freelancer.\n" +
-                    "7.4  In the event of cancellation, escrowed amounts may be refunded to the Employer minus any\n" +
-                    "     applicable non-refundable platform fees, subject to the outcome of any active dispute."
+                    "6. PAYMENT METHOD",
+                    "Payments are processed exclusively via Stripe on the WorkLink platform.\n" +
+                    "Accepted methods: credit/debit card (Visa, Mastercard). The total amount is displayed\n" +
+                    "and confirmed before any charge. No off-platform transfers or cash payments are accepted."
                 },
                 {
-                    "8. DISPUTE RESOLUTION PROCEDURE (LEGIT)",
-                    "8.1  Either party may file a formal dispute (Legit) through the WorkLink platform dashboard at any\n" +
-                    "     time during the active mission period by selecting \"Signaler un Litige\".\n" +
-                    "8.2  Upon filing, the mission status changes automatically to DISPUTE. All work submissions and\n" +
-                    "     payment releases are suspended until the dispute is fully resolved.\n" +
-                    "8.3  Both parties may submit supporting evidence including documents, screenshots, and files\n" +
-                    "     through the platform's dispute interface. Evidence must be factual and relevant.\n" +
-                    "8.4  WorkLink administrators review all evidence impartially and may contact either party for\n" +
-                    "     additional information. The administrator's decision is final and binding on both parties.\n" +
-                    "8.5  The resolution may include full payment release to the Freelancer, partial payment,\n" +
-                    "     full refund to the Employer, or other remedies deemed appropriate by the platform.\n" +
-                    "8.6  Filing false or frivolous disputes constitutes a breach of platform rules and may\n" +
-                    "     result in immediate account suspension and forfeiture of escrowed funds."
+                    "7. ESCROW & FUND RELEASE",
+                    "7.1  Upon contract signing, the agreed amount is held in secure escrow on WorkLink.\n" +
+                    "7.2  Funds are released to the Freelancer only after the Employer validates the deliverables.\n" +
+                    "7.3  A platform service fee is deducted before disbursement and is shown at payment time.\n" +
+                    "7.4  In case of cancellation, refund eligibility depends on the outcome of any active dispute."
                 },
                 {
-                    "9. PLATFORM RULES AND OBLIGATIONS",
-                    "9.1  All communications, deliverables, and payments related to this mission must be conducted\n" +
-                    "     exclusively through the WorkLink platform. Bypassing platform processes is prohibited.\n" +
-                    "9.2  Attempts to circumvent platform fees by contracting directly outside the platform are\n" +
-                    "     strictly prohibited and may result in immediate account suspension and legal action.\n" +
-                    "9.3  Both parties represent that all information provided on their WorkLink profiles and in\n" +
-                    "     connection with this contract is accurate, complete, and up to date.\n" +
-                    "9.4  Both parties agree to maintain confidentiality of all sensitive information exchanged\n" +
-                    "     through the platform in connection with this mission.\n" +
-                    "9.5  Prohibited conduct: harassment, fraud, impersonation, submission of false credentials,\n" +
-                    "     and any discriminatory behavior. Violations may result in account termination."
+                    "8. DISPUTE RESOLUTION (LEGIT)",
+                    "8.1  Either party may open a dispute via the platform dashboard at any time during the mission.\n" +
+                    "     The mission is paused immediately and all payment releases are suspended.\n" +
+                    "8.2  Both parties may submit evidence (files, screenshots) through the dispute interface.\n" +
+                    "     Evidence must be factual and relevant.\n" +
+                    "8.3  WorkLink admins review all evidence impartially. Their decision is final and binding.\n" +
+                    "8.4  Outcomes: full/partial payment to Freelancer, full refund to Employer, or other remedies.\n" +
+                    "8.5  Filing false or frivolous disputes may result in immediate account suspension."
+                },
+                {
+                    "9. PLATFORM RULES & OBLIGATIONS",
+                    "9.1  All communications, deliverables, and payments must go through WorkLink exclusively.\n" +
+                    "9.2  Off-platform contracting to bypass fees is strictly prohibited and may lead to legal action.\n" +
+                    "9.3  All profile information must be accurate, complete, and kept up to date.\n" +
+                    "9.4  Both parties must maintain confidentiality of all mission-related information.\n" +
+                    "9.5  Harassment, fraud, impersonation, or false credentials result in account termination."
                 },
                 {
                     "10. DATA PROTECTION",
-                    "WorkLink processes personal data in compliance with applicable Tunisian data protection laws.\n" +
-                    "Profile information and AI matching data are used solely for platform functionality and service\n" +
-                    "improvement. Personal data is never sold to third parties."
+                    "WorkLink processes personal data in compliance with applicable data protection laws.\n" +
+                    "Data is used solely for platform services and is never sold to third parties."
                 },
                 {
                     "11. LIMITATION OF LIABILITY",
-                    "WorkLink operates as an intermediary platform facilitating connections between companies and\n" +
-                    "freelancers. The platform is not a party to the work performed under this contract and accepts\n" +
-                    "no liability for the quality, timeliness, or outcome of the mission, except as expressly\n" +
-                    "provided in these General Platform Terms & Conditions."
+                    "WorkLink is an intermediary platform and is not liable for the quality, timeliness,\n" +
+                    "or outcome of mission work, except as expressly stated in these General Terms."
                 }
             };
 
@@ -904,17 +862,58 @@ public class ContractService {
                 y2 -= 8;
             }
 
-            // Closing acknowledgment note
-            if (y2 > 80) {
-                y2 -= 4;
+            // ── SIGNATURES (end of contract) ─────────────────────────────────
+            if (y2 > 155) {
+                y2 -= 6;
                 drawLine(cs2, margin, y2, pageWidth - margin, GRAY_BORDER);
-                y2 -= 15;
-                String note = "By signing the main contract, both parties acknowledge having read and agreed to this Annex A.";
-                for (String line : wrapText(note, fontObliq, 9, contentWidth)) {
-                    if (y2 < 75) break;
-                    cs2.beginText(); cs2.setFont(fontObliq, 9); cs2.setNonStrokingColor(TEXT_GRAY);
-                    cs2.newLineAtOffset(margin, y2); cs2.showText(line); cs2.endText();
-                    y2 -= 13;
+                y2 -= 4;
+                drawSectionHeader(cs2, fontBold, "SIGNATURES", margin, y2, contentWidth, PRIMARY);
+                y2 -= 14;
+
+                cs2.beginText(); cs2.setFont(fontObliq, 8); cs2.setNonStrokingColor(TEXT_GRAY);
+                cs2.newLineAtOffset(margin, y2);
+                cs2.showText("By signing below, both parties confirm they have read and agree to this contract and Annex A.");
+                cs2.endText();
+                y2 -= 16;
+
+                float sigY2 = y2 - 55;
+                boolean companySigned2    = contract.getCompanySignedAt() != null;
+                boolean freelancerSigned2 = contract.getStatus() == ContractStatus.SIGNED;
+
+                drawSignatureBlock(cs2, fontBold, fontReg, fontObliq,
+                        margin, sigY2,
+
+                        colW,
+                        "Employer Signature", contract.getCompanyName(),
+                        contract.getCompanySignedAt(), companySigned2);
+
+                drawSignatureBlock(cs2, fontBold, fontReg, fontObliq,
+                        margin + colW + 16, sigY2, colW,
+                        "Freelancer Signature", contract.getFreelancerName(),
+                        contract.getSignedAt(), freelancerSigned2);
+
+                if (withSignature && freelancerSigned2 && contract.getSignatureImageBase64() != null) {
+                    try {
+                        String b64 = contract.getSignatureImageBase64();
+                        if (b64.contains(",")) b64 = b64.split(",")[1];
+                        byte[] imgBytes = Base64.getDecoder().decode(b64);
+                        PDImageXObject sigImg = PDImageXObject.createFromByteArray(doc, imgBytes, "fl-sig");
+                        cs2.drawImage(sigImg, margin + colW + 16, sigY2 + 10, 140, 50);
+                    } catch (Exception e) {
+                        log.warn("Could not embed freelancer signature: {}", e.getMessage());
+                    }
+                }
+
+                if (withSignature && companySigned2 && contract.getCompanySignatureImageBase64() != null) {
+                    try {
+                        String b64 = contract.getCompanySignatureImageBase64();
+                        if (b64.contains(",")) b64 = b64.split(",")[1];
+                        byte[] imgBytes = Base64.getDecoder().decode(b64);
+                        PDImageXObject sigImg = PDImageXObject.createFromByteArray(doc, imgBytes, "co-sig");
+                        cs2.drawImage(sigImg, margin + 5, sigY2 - 10, 75, 73);
+                    } catch (Exception e) {
+                        log.warn("Could not embed company signature: {}", e.getMessage());
+                    }
                 }
             }
 
