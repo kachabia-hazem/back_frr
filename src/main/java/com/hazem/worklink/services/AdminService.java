@@ -136,12 +136,14 @@ public class AdminService {
 
     // ─── User Ban / Unban ─────────────────────────────────────────────────────
 
-    public Map<String, Object> toggleFreelancerBan(String freelancerId, String banReason) {
+    public Map<String, Object> toggleFreelancerBan(String freelancerId, String banReason, String banDuration) {
         Freelancer freelancer = freelancerRepository.findById(freelancerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found: " + freelancerId));
         boolean willBeBanned = Boolean.TRUE.equals(freelancer.getIsActive());
         freelancer.setIsActive(!willBeBanned);
         freelancer.setBanReason(willBeBanned ? banReason : null);
+        freelancer.setBanDuration(willBeBanned ? banDuration : null);
+        freelancer.setBanStartDate(willBeBanned ? LocalDateTime.now() : null);
         freelancer.setUpdatedAt(LocalDateTime.now());
         freelancerRepository.save(freelancer);
         Map<String, Object> result = new HashMap<>();
@@ -151,12 +153,14 @@ public class AdminService {
         return result;
     }
 
-    public Map<String, Object> toggleCompanyBan(String companyId, String banReason) {
+    public Map<String, Object> toggleCompanyBan(String companyId, String banReason, String banDuration) {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found: " + companyId));
         boolean willBeBanned = Boolean.TRUE.equals(company.getIsActive());
         company.setIsActive(!willBeBanned);
         company.setBanReason(willBeBanned ? banReason : null);
+        company.setBanDuration(willBeBanned ? banDuration : null);
+        company.setBanStartDate(willBeBanned ? LocalDateTime.now() : null);
         company.setUpdatedAt(LocalDateTime.now());
         companyRepository.save(company);
         Map<String, Object> result = new HashMap<>();
@@ -327,5 +331,12 @@ public class AdminService {
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found: " + companyId));
         aiSearchClient.computeCompanyTrustScore(company);
         return companyRepository.findById(companyId).orElseThrow();
+    }
+
+    public Company setTrustScore(String companyId, int score) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found: " + companyId));
+        company.setTrustScore(score);
+        return companyRepository.save(company);
     }
 }

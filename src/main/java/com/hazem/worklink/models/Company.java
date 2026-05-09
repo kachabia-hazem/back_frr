@@ -71,4 +71,7 @@ public class Company extends User {
     private LocalDateTime subscriptionStartDate;
 
     private LocalDateTime subscriptionExpiresAt;
+
+    // ── Stripe ────────────────────────────────────────────────────────────────
+    private String stripeCustomerId;
 }

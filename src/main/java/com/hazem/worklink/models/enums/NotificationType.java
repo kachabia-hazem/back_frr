@@ -41,6 +41,8 @@ public enum NotificationType {
 
     // ── Admin contract management ─────────────────────────────────────
     CONTRACT_CANCELLED_BY_ADMIN,   // freelancer + company: contrat annulé par l'admin
+    CONTRACT_AUTO_CANCELLED,              // freelancer + company: payment deadline expired, auto-cancelled
+    CONTRACT_PAYMENT_DEADLINE_WARNING,    // company: payment deadline approaching (3 days / 1 day before)
 
     // ── Feedback moderation ───────────────────────────────────────────
     FEEDBACK_VALIDATED,            // user: feedback approuvé et publié sur la page d'accueil

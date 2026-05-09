@@ -30,6 +30,10 @@ public abstract class User {
 
     protected String banReason;
 
+    protected String banDuration;
+
+    protected LocalDateTime banStartDate;
+
     protected LocalDateTime createdAt = LocalDateTime.now();
 
     protected LocalDateTime updatedAt = LocalDateTime.now();

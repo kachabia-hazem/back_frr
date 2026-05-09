@@ -14,10 +14,18 @@ import com.hazem.worklink.models.enums.PaymentStatus;
 import com.hazem.worklink.repositories.*;
 import com.hazem.worklink.models.PlatformSettings;
 import com.stripe.exception.StripeException;
+import com.stripe.model.Customer;
 import com.stripe.model.PaymentIntent;
+import com.stripe.model.PaymentMethod;
+import com.stripe.model.PaymentMethodCollection;
+import com.stripe.model.SetupIntent;
 import com.stripe.model.checkout.Session;
+import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.PaymentIntentCaptureParams;
 import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.param.PaymentMethodListParams;
+import com.stripe.param.PaymentMethodUpdateParams;
+import com.stripe.param.SetupIntentCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +35,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -196,12 +206,13 @@ public class StripeService {
 
         long amountCents = Math.round(finalPrice * CENTS);
 
-        SessionCreateParams params = SessionCreateParams.builder()
+        String existingCustomerId = getStripeCustomerIdIfExists(userEmail);
+        SessionCreateParams.Builder sessionBuilder = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
                 .setLocale(resolveLocale(locale))
+                .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
                 .setSuccessUrl(frontendUrl + "/payment/success?session_id={CHECKOUT_SESSION_ID}&pack=" + packId)
                 .setCancelUrl(frontendUrl + "/payment/cancel")
-                .setCustomerEmail(userEmail)
                 .addLineItem(SessionCreateParams.LineItem.builder()
                         .setQuantity(1L)
                         .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
@@ -216,8 +227,22 @@ public class StripeService {
                         .build())
                 .putMetadata("packId",    packId)
                 .putMetadata("userEmail", userEmail)
-                .putMetadata("type", "PACK_PURCHASE")
-                .build();
+                .putMetadata("type", "PACK_PURCHASE");
+
+        if (existingCustomerId != null) {
+            sessionBuilder.setCustomer(existingCustomerId)
+                    .setSavedPaymentMethodOptions(
+                            SessionCreateParams.SavedPaymentMethodOptions.builder()
+                                    .addAllowRedisplayFilter(SessionCreateParams.SavedPaymentMethodOptions.AllowRedisplayFilter.ALWAYS)
+                                    .addAllowRedisplayFilter(SessionCreateParams.SavedPaymentMethodOptions.AllowRedisplayFilter.LIMITED)
+                                    .addAllowRedisplayFilter(SessionCreateParams.SavedPaymentMethodOptions.AllowRedisplayFilter.UNSPECIFIED)
+                                    .setPaymentMethodSave(SessionCreateParams.SavedPaymentMethodOptions.PaymentMethodSave.DISABLED)
+                                    .build());
+        } else {
+            sessionBuilder.setCustomerEmail(userEmail);
+        }
+
+        SessionCreateParams params = sessionBuilder.build();
 
         Session session = Session.create(params);
         log.info("Checkout session {} created for pack {} — user {}", session.getId(), packId, userEmail);
@@ -251,12 +276,13 @@ public class StripeService {
                 ? plan.getPointsPerMonth() + " points · Abonnement mensuel · " + dtPrice
                 : plan.getPointsPerMonth() + " points · Monthly subscription · " + dtPrice;
 
-        SessionCreateParams params = SessionCreateParams.builder()
+        String existingCustomerId = getStripeCustomerIdIfExists(userEmail);
+        SessionCreateParams.Builder sessionBuilder = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
                 .setLocale(resolveLocale(locale))
+                .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
                 .setSuccessUrl(frontendUrl + "/payment/success?session_id={CHECKOUT_SESSION_ID}&plan=" + planId)
                 .setCancelUrl(frontendUrl + "/payment/cancel")
-                .setCustomerEmail(userEmail)
                 .addLineItem(SessionCreateParams.LineItem.builder()
                         .setQuantity(1L)
                         .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
@@ -270,8 +296,22 @@ public class StripeService {
                         .build())
                 .putMetadata("planId",    planId)
                 .putMetadata("userEmail", userEmail)
-                .putMetadata("type", "SUBSCRIPTION_PURCHASE")
-                .build();
+                .putMetadata("type", "SUBSCRIPTION_PURCHASE");
+
+        if (existingCustomerId != null) {
+            sessionBuilder.setCustomer(existingCustomerId)
+                    .setSavedPaymentMethodOptions(
+                            SessionCreateParams.SavedPaymentMethodOptions.builder()
+                                    .addAllowRedisplayFilter(SessionCreateParams.SavedPaymentMethodOptions.AllowRedisplayFilter.ALWAYS)
+                                    .addAllowRedisplayFilter(SessionCreateParams.SavedPaymentMethodOptions.AllowRedisplayFilter.LIMITED)
+                                    .addAllowRedisplayFilter(SessionCreateParams.SavedPaymentMethodOptions.AllowRedisplayFilter.UNSPECIFIED)
+                                    .setPaymentMethodSave(SessionCreateParams.SavedPaymentMethodOptions.PaymentMethodSave.DISABLED)
+                                    .build());
+        } else {
+            sessionBuilder.setCustomerEmail(userEmail);
+        }
+
+        SessionCreateParams params = sessionBuilder.build();
 
         Session session = Session.create(params);
         log.info("Checkout session {} created for plan {} — user {}", session.getId(), planId, userEmail);
@@ -558,6 +598,93 @@ public class StripeService {
         tx.setDescription("Abonnement " + plan.getName() + " — " + plan.getPointsPerMonth() + " pts");
         tx.setCreatedAt(now);
         transactionRepository.save(tx);
+    }
+
+    // ─── Saved Payment Methods (Setup Intent) ────────────────────────────────
+
+    private String getStripeCustomerIdIfExists(String email) {
+        return freelancerRepository.findByEmail(email)
+                .map(Freelancer::getStripeCustomerId)
+                .filter(id -> id != null && !id.isBlank())
+                .orElseGet(() -> companyRepository.findByEmail(email)
+                        .map(com.hazem.worklink.models.Company::getStripeCustomerId)
+                        .filter(id -> id != null && !id.isBlank())
+                        .orElse(null));
+    }
+
+    private String getOrCreateCustomerId(String email) throws StripeException {
+        var freelancerOpt = freelancerRepository.findByEmail(email);
+        if (freelancerOpt.isPresent()) {
+            var fl = freelancerOpt.get();
+            if (fl.getStripeCustomerId() != null) return fl.getStripeCustomerId();
+            Customer customer = Customer.create(CustomerCreateParams.builder()
+                    .setEmail(email)
+                    .setName((fl.getFirstName() != null ? fl.getFirstName() : "") + " "
+                            + (fl.getLastName()  != null ? fl.getLastName()  : ""))
+                    .build());
+            fl.setStripeCustomerId(customer.getId());
+            freelancerRepository.save(fl);
+            return customer.getId();
+        }
+        var companyOpt = companyRepository.findByEmail(email);
+        if (companyOpt.isPresent()) {
+            var co = companyOpt.get();
+            if (co.getStripeCustomerId() != null) return co.getStripeCustomerId();
+            Customer customer = Customer.create(CustomerCreateParams.builder()
+                    .setEmail(email)
+                    .setName(co.getCompanyName() != null ? co.getCompanyName() : email)
+                    .build());
+            co.setStripeCustomerId(customer.getId());
+            companyRepository.save(co);
+            return customer.getId();
+        }
+        throw new ResourceNotFoundException("User not found: " + email);
+    }
+
+    public Map<String, String> createSetupIntent(String email) throws StripeException {
+        String customerId = getOrCreateCustomerId(email);
+        SetupIntent intent = SetupIntent.create(SetupIntentCreateParams.builder()
+                .setCustomer(customerId)
+                .addPaymentMethodType("card")
+                .setUsage(SetupIntentCreateParams.Usage.OFF_SESSION)
+                .build());
+        log.info("SetupIntent {} created for customer {}", intent.getId(), customerId);
+        return Map.of("clientSecret", intent.getClientSecret());
+    }
+
+    public List<Map<String, Object>> listPaymentMethods(String email) throws StripeException {
+        String customerId = getOrCreateCustomerId(email);
+        PaymentMethodCollection collection = PaymentMethod.list(PaymentMethodListParams.builder()
+                .setCustomer(customerId)
+                .setType(PaymentMethodListParams.Type.CARD)
+                .build());
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (PaymentMethod pm : collection.getData()) {
+            // Mark as allow_redisplay=always so it appears in Checkout Sessions
+            try {
+                pm.update(PaymentMethodUpdateParams.builder()
+                        .putExtraParam("allow_redisplay", "always")
+                        .build());
+            } catch (Exception ignored) {}
+            Map<String, Object> entry = new HashMap<>();
+            entry.put("id",       pm.getId());
+            entry.put("brand",    pm.getCard().getBrand());
+            entry.put("last4",    pm.getCard().getLast4());
+            entry.put("expMonth", pm.getCard().getExpMonth());
+            entry.put("expYear",  pm.getCard().getExpYear());
+            result.add(entry);
+        }
+        return result;
+    }
+
+    public void detachPaymentMethod(String pmId, String email) throws StripeException {
+        String customerId = getOrCreateCustomerId(email);
+        PaymentMethod pm = PaymentMethod.retrieve(pmId);
+        if (!customerId.equals(pm.getCustomer())) {
+            throw new IllegalStateException("Payment method does not belong to this user");
+        }
+        pm.detach();
+        log.info("PaymentMethod {} detached for {}", pmId, email);
     }
 
     // ─── Admin Payment Analytics ─────────────────────────────────────────────

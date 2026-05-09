@@ -10,7 +10,10 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 @RestControllerAdvice
@@ -49,9 +52,26 @@ public class GlobalExceptionHandler {
         Map<String, String> error = new HashMap<>();
         error.put("message", ex.getMessage());
         error.put("banReason", ex.getBanReason() != null ? ex.getBanReason() : "");
+        error.put("banDuration", ex.getBanDuration() != null ? ex.getBanDuration() : "");
         error.put("userId", ex.getUserId() != null ? ex.getUserId() : "");
         error.put("userType", ex.getUserType() != null ? ex.getUserType() : "");
+        String banEndDate = computeBanEndDate(ex.getBanStartDate(), ex.getBanDuration());
+        error.put("banEndDate", banEndDate != null ? banEndDate : "");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    private String computeBanEndDate(LocalDateTime startDate, String banDuration) {
+        if (startDate == null || banDuration == null || banDuration.isBlank()) return null;
+        LocalDateTime endDate;
+        switch (banDuration) {
+            case "1 Day"    -> endDate = startDate.plusDays(1);
+            case "3 Days"   -> endDate = startDate.plusDays(3);
+            case "7 Days"   -> endDate = startDate.plusDays(7);
+            case "14 Days"  -> endDate = startDate.plusDays(14);
+            case "30 Days"  -> endDate = startDate.plusDays(30);
+            default         -> { return null; }
+        }
+        return endDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH));
     }
 
     // Gestion : Mauvais identifiants (login incorrect)

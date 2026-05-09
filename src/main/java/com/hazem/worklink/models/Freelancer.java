@@ -102,4 +102,7 @@ public class Freelancer extends User {
     private String subscriptionPlanId;
     private LocalDateTime subscriptionStartDate;
     private LocalDateTime subscriptionExpiresAt;
+
+    // ── Stripe ────────────────────────────────────────────────────────────────
+    private String stripeCustomerId;
 }

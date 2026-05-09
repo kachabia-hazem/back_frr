@@ -64,7 +64,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/applications/*/status").hasAuthority("COMPANY")
                         .requestMatchers("/api/applications/**").hasAuthority("FREELANCER")
                         .requestMatchers("/api/active-missions/**").hasAnyAuthority("FREELANCER", "COMPANY")
-                        .requestMatchers("/api/notifications/**").hasAnyAuthority("FREELANCER", "COMPANY")
+                        .requestMatchers("/api/notifications/**").hasAnyAuthority("FREELANCER", "COMPANY", "ADMIN")
                         .requestMatchers("/api/feedbacks/**").hasAnyAuthority("FREELANCER", "COMPANY")
                         .requestMatchers("/api/legits/**").hasAnyAuthority("FREELANCER", "COMPANY")
                         .requestMatchers("/api/admin/**").hasAuthority("ADMIN")

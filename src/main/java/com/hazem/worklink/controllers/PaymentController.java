@@ -10,6 +10,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -144,6 +145,48 @@ public class PaymentController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** POST /api/payments/payment-methods/setup
+     *  Creates a Stripe Setup Intent so the user can save a card.
+     *  Returns {clientSecret} for Stripe.js confirmSetup(). */
+    @PostMapping("/payment-methods/setup")
+    public ResponseEntity<Map<String, String>> createSetupIntent(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            return ResponseEntity.ok(stripeService.createSetupIntent(userDetails.getUsername()));
+        } catch (StripeException e) {
+            log.error("Stripe error creating setup intent for {}: {}", userDetails.getUsername(), e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** GET /api/payments/payment-methods
+     *  Returns the list of saved cards for the authenticated user. */
+    @GetMapping("/payment-methods")
+    public ResponseEntity<List<Map<String, Object>>> listPaymentMethods(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            return ResponseEntity.ok(stripeService.listPaymentMethods(userDetails.getUsername()));
+        } catch (StripeException e) {
+            log.error("Stripe error listing payment methods for {}: {}", userDetails.getUsername(), e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /** DELETE /api/payments/payment-methods/{pmId}
+     *  Detaches (removes) a saved card from the user's Stripe customer. */
+    @DeleteMapping("/payment-methods/{pmId}")
+    public ResponseEntity<Void> deletePaymentMethod(
+            @PathVariable String pmId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            stripeService.detachPaymentMethod(pmId, userDetails.getUsername());
+            return ResponseEntity.noContent().build();
+        } catch (StripeException | IllegalStateException e) {
+            log.error("Error removing payment method {} for {}: {}", pmId, userDetails.getUsername(), e.getMessage());
+            return ResponseEntity.badRequest().build();
         }
     }
 }

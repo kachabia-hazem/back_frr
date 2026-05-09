@@ -76,7 +76,8 @@ public class AdminController {
             @PathVariable String id,
             @RequestBody(required = false) Map<String, String> body) {
         String banReason = body != null ? body.getOrDefault("banReason", "") : "";
-        return ResponseEntity.ok(adminService.toggleCompanyBan(id, banReason));
+        String banDuration = body != null ? body.getOrDefault("banDuration", "") : "";
+        return ResponseEntity.ok(adminService.toggleCompanyBan(id, banReason, banDuration));
     }
 
     @DeleteMapping("/companies/{id}")
@@ -88,6 +89,13 @@ public class AdminController {
     @PostMapping("/companies/{id}/refresh-trust-score")
     public ResponseEntity<Company> refreshTrustScore(@PathVariable String id) {
         return ResponseEntity.ok(adminService.refreshTrustScore(id));
+    }
+
+    @PatchMapping("/companies/{id}/trust-score")
+    public ResponseEntity<Company> setTrustScore(
+            @PathVariable String id,
+            @RequestBody Map<String, Integer> body) {
+        return ResponseEntity.ok(adminService.setTrustScore(id, body.get("trustScore")));
     }
 
     // ─── Freelancer Management ────────────────────────────────────────────────
@@ -107,7 +115,8 @@ public class AdminController {
             @PathVariable String id,
             @RequestBody(required = false) Map<String, String> body) {
         String banReason = body != null ? body.getOrDefault("banReason", "") : "";
-        return ResponseEntity.ok(adminService.toggleFreelancerBan(id, banReason));
+        String banDuration = body != null ? body.getOrDefault("banDuration", "") : "";
+        return ResponseEntity.ok(adminService.toggleFreelancerBan(id, banReason, banDuration));
     }
 
     @DeleteMapping("/freelancers/{id}")

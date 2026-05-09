@@ -658,30 +658,30 @@ public class NotificationService {
                                                 String missionTitle, Double amount) {
         String fmt = amount != null ? String.format("%.2f DT", amount) : "—";
         build(companyId, NotificationType.CONTRACT_PAYMENT_AUTHORIZED,
-                "Paiement sécurisé ✓",
-                "Votre paiement de " + fmt + " pour la mission \"" + missionTitle + "\" a été sécurisé.\n" +
-                "Les fonds sont bloqués en escrow et seront libérés au freelancer après validation.",
+                "Payment Secured ✓",
+                "Your payment of " + fmt + " for mission \"" + missionTitle + "\" has been secured.\n" +
+                "Funds are held in escrow and will be released to the freelancer after validation.",
                 "WorkLink", null, "/company-contracts");
         build(freelancerId, NotificationType.CONTRACT_PAYMENT_AUTHORIZED,
-                "Paiement de mission sécurisé 🔒",
-                "L'entreprise a effectué le paiement pour la mission \"" + missionTitle + "\".\n" +
-                "Un montant de " + fmt + " est en escrow. Vous le recevrez après validation de votre travail.",
+                "Mission Payment Secured 🔒",
+                "The company has made the payment for mission \"" + missionTitle + "\".\n" +
+                "An amount of " + fmt + " is in escrow. You will receive it after your work is validated.",
                 "WorkLink", null, "/freelancer-contracts");
     }
 
     public void sendPaymentReleasedNotification(String freelancerId, String missionTitle, Double amount) {
         String fmt = amount != null ? String.format("%.2f DT", amount) : "—";
         build(freelancerId, NotificationType.CONTRACT_PAYMENT_RELEASED,
-                "Paiement libéré 🎉",
-                "Le paiement de " + fmt + " pour la mission \"" + missionTitle +
-                "\" a été libéré sur votre compte (commission 7% déduite).",
+                "Payment Released 🎉",
+                "The payment of " + fmt + " for mission \"" + missionTitle +
+                "\" has been released to your account (7% commission deducted).",
                 "WorkLink", null, "/freelancer-contracts");
     }
 
     public void sendPackPurchaseNotification(String userId, String packName, int points) {
         build(userId, NotificationType.PACK_PURCHASED,
-                "Points crédités ✓",
-                points + " points ont été ajoutés à votre solde suite à l'achat du pack \"" + packName + "\".",
+                "Points Credited ✓",
+                points + " points have been added to your balance following the purchase of the \"" + packName + "\" pack.",
                 "WorkLink", null, "/company-balance");
     }
 
@@ -693,59 +693,117 @@ public class NotificationService {
     public void sendLegitOpenedNotification(String recipientId, String initiatorName,
                                              String missionTitle, String missionId) {
         String message = String.format(
-                "Un litige a été ouvert par %s concernant la mission \"%s\".\n" +
-                "La mission est maintenant en état de litige. L'équipe administrative a été notifiée et traitera votre dossier dans les plus brefs délais.",
+                "A dispute has been opened by %s regarding mission \"%s\".\n" +
+                "The mission is now in dispute status. The admin team has been notified and will process your case as soon as possible.",
                 initiatorName, missionTitle);
         build(recipientId, NotificationType.LEGIT_OPENED,
-                "Litige ouvert — " + missionTitle,
+                "Dispute Opened — " + missionTitle,
                 message,
                 initiatorName, null, "/active-mission/" + missionId);
     }
 
     public void sendLegitMissionCancelledNotification(String recipientId, String missionTitle, String reason) {
         String message = String.format(
-                "Suite au litige concernant la mission \"%s\", l'administrateur a décidé d'annuler la mission.\n" +
-                "Motif : %s\nLes fonds sont conservés par la plateforme.",
-                missionTitle, reason != null && !reason.isBlank() ? reason : "Non précisé");
+                "Following the dispute regarding mission \"%s\", the administrator has decided to cancel the mission.\n" +
+                "Reason: %s\nFunds are retained by the platform.",
+                missionTitle, reason != null && !reason.isBlank() ? reason : "Not specified");
         build(recipientId, NotificationType.LEGIT_MISSION_CANCELLED_BY_ADMIN,
-                "Mission annulée par l'admin — " + missionTitle,
-                message, "Équipe WorkLink", "admin", "/dashboard");
+                "Mission Cancelled by Admin — " + missionTitle,
+                message, "WorkLink Team", "admin", "/dashboard");
     }
 
     public void sendLegitRefundNotification(String recipientId, String missionTitle,
                                              double percentage, String role) {
-        String part = "FREELANCER".equalsIgnoreCase(role) ? "freelancer" : "entreprise";
+        String part = "FREELANCER".equalsIgnoreCase(role) ? "freelancer" : "company";
         String message = String.format(
-                "Suite au litige concernant la mission \"%s\", l'administrateur a décidé un remboursement.\n" +
-                "Votre part : %.0f%% du montant total. Le contrat est annulé.",
+                "Following the dispute regarding mission \"%s\", the administrator has decided a refund.\n" +
+                "Your share: %.0f%% of the total amount. The contract is cancelled.",
                 missionTitle, percentage);
         build(recipientId, NotificationType.LEGIT_REFUND_BY_ADMIN,
-                "Remboursement décidé — " + missionTitle,
-                message, "Équipe WorkLink", "admin", "/dashboard");
+                "Refund Decided — " + missionTitle,
+                message, "WorkLink Team", "admin", "/dashboard");
     }
 
     public void sendLegitStatusUpdatedNotification(String recipientId, String newStatus, String missionTitle) {
         String label = switch (newStatus) {
-            case "EN_COURS" -> "en cours de traitement";
-            case "RESOLU"   -> "résolu";
-            case "REJETE"   -> "rejeté";
+            case "EN_COURS" -> "in progress";
+            case "RESOLU"   -> "resolved";
+            case "REJETE"   -> "rejected";
             default         -> newStatus.toLowerCase();
         };
         String message = String.format(
-                "Le statut de votre litige concernant la mission \"%s\" a été mis à jour : il est désormais \"%s\".\n" +
-                "Vous serez informé(e) de toute évolution.", missionTitle, label);
+                "The status of your dispute regarding mission \"%s\" has been updated: it is now \"%s\".\n" +
+                "You will be notified of any further developments.", missionTitle, label);
         build(recipientId, NotificationType.LEGIT_STATUS_UPDATED,
-                "Avancement du litige — " + missionTitle,
-                message, "Équipe WorkLink", "admin", "/dashboard");
+                "Dispute Update — " + missionTitle,
+                message, "WorkLink Team", "admin", "/dashboard");
     }
 
     public void sendLegitMissionContinuedNotification(String recipientId, String missionTitle) {
         String message = String.format(
-                "Suite à l'examen du litige concernant la mission \"%s\", l'administrateur a décidé que la mission doit continuer.\n" +
-                "Le contrat est de nouveau actif. Veuillez reprendre la collaboration.",
+                "Following the review of the dispute regarding mission \"%s\", the administrator has decided that the mission should continue.\n" +
+                "The contract is active again. Please resume the collaboration.",
                 missionTitle);
         build(recipientId, NotificationType.LEGIT_MISSION_CONTINUED_BY_ADMIN,
-                "Mission relancée par l'admin — " + missionTitle,
-                message, "Équipe WorkLink", "admin", "/dashboard");
+                "Mission Resumed by Admin — " + missionTitle,
+                message, "WorkLink Team", "admin", "/dashboard");
+    }
+
+    /** Payment deadline warning — sent to company X days before mission start */
+    public void sendPaymentDeadlineWarningNotification(String companyId, String missionTitle,
+                                                        java.time.LocalDate startDate, long daysLeft) {
+        String urgency = daysLeft == 1 ? "⚠️ URGENT — " : "⏰ ";
+        String title = urgency + "Payment deadline approaching — " + missionTitle;
+        String message = String.format(
+                "The contract for mission \"%s\" has not been paid yet.\n\n" +
+                "Payment deadline: %s (%d day%s remaining).\n\n" +
+                "The contract must be paid between the freelancer's signature date and the mission start date. " +
+                "If payment is not completed before the start date, the contract will be automatically cancelled " +
+                "and the mission will not begin.\n\n" +
+                "Please proceed to the Contracts page to complete the payment.",
+                missionTitle,
+                startDate.toString(),
+                daysLeft,
+                daysLeft == 1 ? "" : "s");
+        build(companyId, NotificationType.CONTRACT_PAYMENT_DEADLINE_WARNING,
+                title, message, "WorkLink Team", null, "/company-contracts");
+    }
+
+    /** Payment deadline warning — sent to freelancer X days before mission start */
+    public void sendPaymentDeadlineWarningToFreelancer(String freelancerId, String missionTitle,
+                                                        java.time.LocalDate startDate, long daysLeft) {
+        String urgency = daysLeft == 1 ? "⚠️ URGENT — " : "⏰ ";
+        String title = urgency + "Contract payment pending — " + missionTitle;
+        String message = String.format(
+                "The contract payment for mission \"%s\" has not yet been completed within the required timeframe.\n\n" +
+                "Payment deadline: %s (%d day%s remaining).\n\n" +
+                "If the situation is not resolved before the deadline, the contract will be automatically cancelled " +
+                "and the mission will not begin.\n\n" +
+                "If you have any concerns, please contact the company or WorkLink support.",
+                missionTitle,
+                startDate.toString(),
+                daysLeft,
+                daysLeft == 1 ? "" : "s");
+        build(freelancerId, NotificationType.CONTRACT_PAYMENT_DEADLINE_WARNING,
+                title, message, "WorkLink Team", null, "/my-contracts");
+    }
+
+    /** Auto-cancellation — payment window expired before mission start date */
+    public void sendContractAutoCancelledNotification(String freelancerId, String companyId, String missionTitle) {
+        String freelancerMessage = String.format(
+                "The contract for mission \"%s\" has been automatically cancelled because the company did not complete the payment before the mission start date.\n" +
+                "If you have any questions, please contact support.",
+                missionTitle);
+        build(freelancerId, NotificationType.CONTRACT_AUTO_CANCELLED,
+                "Contract Cancelled — Payment Deadline Expired",
+                freelancerMessage, "WorkLink Team", null, "/my-contracts");
+
+        String companyMessage = String.format(
+                "The contract for mission \"%s\" has been automatically cancelled because the payment was not completed before the mission start date.\n" +
+                "Please create a new contract if you wish to continue with this freelancer.",
+                missionTitle);
+        build(companyId, NotificationType.CONTRACT_AUTO_CANCELLED,
+                "Contract Cancelled — Payment Deadline Expired",
+                companyMessage, "WorkLink Team", null, "/company-contracts");
     }
 }

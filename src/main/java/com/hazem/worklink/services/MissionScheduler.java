@@ -4,7 +4,9 @@ import com.hazem.worklink.models.ActiveMission;
 import com.hazem.worklink.models.Mission;
 import com.hazem.worklink.models.enums.ActiveMissionStatus;
 import com.hazem.worklink.models.enums.MissionStatus;
+import com.hazem.worklink.models.enums.PaymentStatus;
 import com.hazem.worklink.repositories.ActiveMissionRepository;
+import com.hazem.worklink.repositories.ContractRepository;
 import com.hazem.worklink.repositories.MissionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +24,7 @@ public class MissionScheduler {
 
     private final MissionRepository missionRepository;
     private final ActiveMissionRepository activeMissionRepository;
+    private final ContractRepository contractRepository;
     private final NotificationService notificationService;
 
     /**
@@ -56,9 +59,20 @@ public class MissionScheduler {
                 .findByStatusAndStartDateLessThanEqual(ActiveMissionStatus.PENDING, today);
 
         for (ActiveMission mission : toActivate) {
+            // Only activate if the linked contract has been paid (AUTHORIZED or CAPTURED)
+            boolean contractPaid = contractRepository.findById(mission.getContractId())
+                    .map(c -> c.getPaymentStatus() == PaymentStatus.AUTHORIZED
+                            || c.getPaymentStatus() == PaymentStatus.CAPTURED)
+                    .orElse(false);
+
+            if (!contractPaid) {
+                log.debug("ActiveMission '{}' (id={}) skipped activation — contract not yet paid", mission.getTitle(), mission.getId());
+                continue;
+            }
+
             mission.setStatus(ActiveMissionStatus.ACTIVE);
             activeMissionRepository.save(mission);
-            log.info("ActiveMission '{}' (id={}) activated — start date reached", mission.getTitle(), mission.getId());
+            log.info("ActiveMission '{}' (id={}) activated — start date reached and contract paid", mission.getTitle(), mission.getId());
 
             try {
                 notificationService.sendMissionActivatedNotification(

@@ -9,6 +9,7 @@ import com.hazem.worklink.exceptions.ResourceNotFoundException;
 import com.hazem.worklink.models.*;
 import com.hazem.worklink.models.enums.ActiveMissionStatus;
 import com.hazem.worklink.models.enums.ContractStatus;
+import com.hazem.worklink.models.enums.PaymentStatus;
 import com.hazem.worklink.models.enums.TaskStatus;
 import com.hazem.worklink.repositories.*;
 import lombok.RequiredArgsConstructor;
@@ -57,10 +58,12 @@ public class ActiveMissionService {
             return existing;
         }
 
-        // Determine initial status: PENDING if start date is in the future, ACTIVE otherwise
+        // PENDING until BOTH conditions are met: start date arrived AND contract paid
         boolean startDateInFuture = contract.getStartDate() != null
                 && contract.getStartDate().isAfter(LocalDate.now());
-        ActiveMissionStatus initialStatus = startDateInFuture
+        boolean paymentDone = contract.getPaymentStatus() == PaymentStatus.AUTHORIZED
+                || contract.getPaymentStatus() == PaymentStatus.CAPTURED;
+        ActiveMissionStatus initialStatus = (startDateInFuture || !paymentDone)
                 ? ActiveMissionStatus.PENDING
                 : ActiveMissionStatus.ACTIVE;
 
