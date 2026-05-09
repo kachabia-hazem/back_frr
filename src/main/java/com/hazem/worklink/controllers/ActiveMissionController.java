@@ -154,6 +154,13 @@ public class ActiveMissionController {
         return ResponseEntity.noContent().build();
     }
 
+    /** Company: remove a completed mission from tracking history */
+    @DeleteMapping("/{id}/company-history")
+    public ResponseEntity<Void> deleteFromHistoryByCompany(@PathVariable String id, Authentication auth) {
+        activeMissionService.deleteFromHistoryByCompany(id, auth.getName());
+        return ResponseEntity.noContent().build();
+    }
+
     /** Company: extend deadline of an overdue ACTIVE mission and reset contract for re-signing */
     @PostMapping("/{id}/extend")
     public ResponseEntity<ActiveMission> extendDeadline(@PathVariable String id,

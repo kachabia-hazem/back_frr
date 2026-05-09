@@ -134,6 +134,49 @@ public class ApplicationService {
         notificationService.sendApplicationWithdrawnNotification(freelancer.getId(), missionTitle);
     }
 
+    /** Freelancer dismisses an ACCEPTED or REJECTED application (removes it from history). */
+    public void dismissApplicationByFreelancer(String applicationId, String email) {
+        Freelancer freelancer = freelancerRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found"));
+
+        Application application = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found: " + applicationId));
+
+        if (!application.getFreelancerId().equals(freelancer.getId())) {
+            throw new RuntimeException("Not authorized to dismiss this application");
+        }
+
+        if (application.getStatus() != ApplicationStatus.ACCEPTED && application.getStatus() != ApplicationStatus.REJECTED) {
+            throw new IllegalStateException("Only accepted or rejected applications can be dismissed");
+        }
+
+        applicationRepository.delete(application);
+        log.info("Freelancer dismissed application {} (status={})", applicationId, application.getStatus());
+    }
+
+    /** Company dismisses an ACCEPTED or REJECTED application from their history. */
+    public void dismissApplicationByCompany(String applicationId, String email) {
+        Company company = companyRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found"));
+
+        Application application = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found: " + applicationId));
+
+        Mission mission = missionRepository.findById(application.getMissionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Mission not found"));
+
+        if (!mission.getCompanyId().equals(company.getId())) {
+            throw new RuntimeException("Not authorized to dismiss this application");
+        }
+
+        if (application.getStatus() != ApplicationStatus.ACCEPTED && application.getStatus() != ApplicationStatus.REJECTED) {
+            throw new IllegalStateException("Only accepted or rejected applications can be dismissed");
+        }
+
+        applicationRepository.delete(application);
+        log.info("Company dismissed application {} (status={})", applicationId, application.getStatus());
+    }
+
     public List<ApplicationResponse> getMyApplications(String freelancerEmail) {
         Freelancer freelancer = freelancerRepository.findByEmail(freelancerEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Freelancer not found with email: " + freelancerEmail));

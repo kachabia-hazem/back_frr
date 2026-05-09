@@ -68,10 +68,14 @@ public class Contract {
 
     // ── Stripe Escrow Payment ────────────────────────────────────────────────
     private PaymentStatus paymentStatus = PaymentStatus.UNPAID;
-    private String        paymentIntentId;   // Stripe PaymentIntent ID
-    private Double        totalAmount;       // salary × contract days
-    private Double        platformFee;       // 7% commission
-    private Double        freelancerAmount;  // 93% to freelancer
-    private LocalDateTime paidAt;            // when AUTHORIZED
-    private LocalDateTime capturedAt;        // when CAPTURED (mission validated)
+    private String        paymentIntentId;       // Stripe PaymentIntent ID
+    private Double        totalAmount;            // salary × contract days
+    private Double        platformFee;            // 7% commission
+    private Double        freelancerAmount;       // 93% to freelancer
+    private LocalDateTime paidAt;                 // when AUTHORIZED
+    private LocalDateTime capturedAt;             // when CAPTURED (mission validated)
+
+    // ── Legit refund split (set by admin on REFUNDED contracts) ─────────────
+    private Double        freelancerRefundAmount; // freelancer's portion of refund
+    private Double        companyRefundAmount;    // company's portion of refund
 }

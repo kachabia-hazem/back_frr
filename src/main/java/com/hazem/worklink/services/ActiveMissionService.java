@@ -410,6 +410,24 @@ public class ActiveMissionService {
     }
 
     /**
+     * Company removes a COMPLETED mission from their tracking history.
+     */
+    public void deleteFromHistoryByCompany(String missionId, String email) {
+        ActiveMission mission = activeMissionRepository.findById(missionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Active mission not found: " + missionId));
+        assertCompany(mission, email);
+
+        if (mission.getStatus() != ActiveMissionStatus.COMPLETED) {
+            throw new IllegalStateException("Only completed missions can be removed from history");
+        }
+
+        taskRepository.deleteByMissionId(missionId);
+        deliverableRepository.deleteByMissionId(missionId);
+        activeMissionRepository.delete(mission);
+        log.info("Company removed completed mission {} from history", missionId);
+    }
+
+    /**
      * Returns all missions submitted by freelancers that are awaiting this company's validation.
      */
     public List<ActiveMission> getPendingValidations(String email) {

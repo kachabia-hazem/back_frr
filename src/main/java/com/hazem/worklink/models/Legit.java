@@ -49,6 +49,9 @@ public class Legit {
 
     // Admin
     private String adminNote;
+    private String adminDecision;           // ANNULE | REMBOURSE | CONTINUE
+    private Double freelancerRefundPercentage;
+    private Double companyRefundPercentage;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

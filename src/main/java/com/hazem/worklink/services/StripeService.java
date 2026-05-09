@@ -493,6 +493,7 @@ public class StripeService {
                         c.getCompanyName(),
                         c.getPaymentStatus(),
                         c.getFreelancerAmount(),
+                        c.getFreelancerRefundAmount(),
                         c.getPaidAt(),
                         c.getCapturedAt()
                 ))

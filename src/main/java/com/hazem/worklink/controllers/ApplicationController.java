@@ -82,4 +82,20 @@ public class ApplicationController {
         String email = authentication.getName();
         return ResponseEntity.ok(applicationService.updateApplicationStatus(email, id, status));
     }
+
+    @DeleteMapping("/{id}/dismiss")
+    public ResponseEntity<Void> dismissApplication(
+            Authentication authentication,
+            @PathVariable String id) {
+        applicationService.dismissApplicationByFreelancer(id, authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/company-dismiss")
+    public ResponseEntity<Void> dismissApplicationByCompany(
+            Authentication authentication,
+            @PathVariable String id) {
+        applicationService.dismissApplicationByCompany(id, authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
 }

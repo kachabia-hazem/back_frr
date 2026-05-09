@@ -41,6 +41,8 @@ public class ContractResponse {
     private Double totalAmount;
     private Double platformFee;
     private Double freelancerAmount;
+    private Double freelancerRefundAmount;
+    private Double companyRefundAmount;
 
     public static ContractResponse from(Contract c) {
         ContractResponse r = new ContractResponse();
@@ -72,6 +74,8 @@ public class ContractResponse {
         r.setTotalAmount(c.getTotalAmount());
         r.setPlatformFee(c.getPlatformFee());
         r.setFreelancerAmount(c.getFreelancerAmount());
+        r.setFreelancerRefundAmount(c.getFreelancerRefundAmount());
+        r.setCompanyRefundAmount(c.getCompanyRefundAmount());
         return r;
     }
 }

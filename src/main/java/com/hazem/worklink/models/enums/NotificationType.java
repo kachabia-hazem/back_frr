@@ -58,6 +58,10 @@ public enum NotificationType {
     PACK_PURCHASED,                     // user: points credited after Stripe checkout
 
     // ── Legit (dispute) notifications ────────────────────────────────
-    LEGIT_OPENED,                       // both parties: a dispute was opened on a mission
-    LEGIT_RESPONSE_FROM_ADMIN           // user: admin sent a response to their legit
+    LEGIT_OPENED,                         // both parties: a dispute was opened on a mission
+    LEGIT_RESPONSE_FROM_ADMIN,            // user: admin sent a response to their legit
+    LEGIT_MISSION_CANCELLED_BY_ADMIN,     // both: admin cancelled mission, funds go to company escrow
+    LEGIT_REFUND_BY_ADMIN,               // both: admin decided refund with percentage split
+    LEGIT_MISSION_CONTINUED_BY_ADMIN,    // both: admin decided to continue the mission
+    LEGIT_STATUS_UPDATED                 // both: admin changed legit status (progress update)
 }

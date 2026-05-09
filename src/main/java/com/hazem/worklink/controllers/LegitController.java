@@ -1,5 +1,8 @@
 package com.hazem.worklink.controllers;
 
+import com.hazem.worklink.dto.request.AdminCancelMissionRequest;
+import com.hazem.worklink.dto.request.AdminContinueMissionRequest;
+import com.hazem.worklink.dto.request.AdminRefundRequest;
 import com.hazem.worklink.dto.request.AdminSendEmailRequest;
 import com.hazem.worklink.dto.request.CreateLegitRequest;
 import com.hazem.worklink.models.Legit;
@@ -59,5 +62,23 @@ public class LegitController {
     public ResponseEntity<Legit> sendEmail(@PathVariable String id,
                                             @RequestBody AdminSendEmailRequest req) {
         return ResponseEntity.ok(legitService.sendEmail(id, req));
+    }
+
+    @PostMapping("/api/admin/legits/{id}/cancel-mission")
+    public ResponseEntity<Legit> cancelMission(@PathVariable String id,
+                                                @RequestBody AdminCancelMissionRequest req) {
+        return ResponseEntity.ok(legitService.adminCancelMission(id, req));
+    }
+
+    @PostMapping("/api/admin/legits/{id}/refund")
+    public ResponseEntity<Legit> refundMission(@PathVariable String id,
+                                                @RequestBody AdminRefundRequest req) {
+        return ResponseEntity.ok(legitService.adminRefundMission(id, req));
+    }
+
+    @PostMapping("/api/admin/legits/{id}/continue-mission")
+    public ResponseEntity<Legit> continueMission(@PathVariable String id,
+                                                  @RequestBody AdminContinueMissionRequest req) {
+        return ResponseEntity.ok(legitService.adminContinueMission(id, req));
     }
 }

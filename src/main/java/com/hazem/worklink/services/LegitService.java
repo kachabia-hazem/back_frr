@@ -1,14 +1,21 @@
 package com.hazem.worklink.services;
 
+import com.hazem.worklink.dto.request.AdminCancelMissionRequest;
+import com.hazem.worklink.dto.request.AdminContinueMissionRequest;
+import com.hazem.worklink.dto.request.AdminRefundRequest;
 import com.hazem.worklink.dto.request.AdminSendEmailRequest;
 import com.hazem.worklink.dto.request.CreateLegitRequest;
 import com.hazem.worklink.exceptions.ResourceNotFoundException;
 import com.hazem.worklink.models.ActiveMission;
+import com.hazem.worklink.models.Contract;
 import com.hazem.worklink.models.Legit;
 import com.hazem.worklink.models.enums.ActiveMissionStatus;
+import com.hazem.worklink.models.enums.ContractStatus;
 import com.hazem.worklink.models.enums.LegitStatus;
+import com.hazem.worklink.models.enums.PaymentStatus;
 import com.hazem.worklink.repositories.ActiveMissionRepository;
 import com.hazem.worklink.repositories.CompanyRepository;
+import com.hazem.worklink.repositories.ContractRepository;
 import com.hazem.worklink.repositories.FreelancerRepository;
 import com.hazem.worklink.repositories.LegitRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +36,7 @@ public class LegitService {
     private final FreelancerRepository freelancerRepository;
     private final CompanyRepository companyRepository;
     private final ActiveMissionRepository activeMissionRepository;
+    private final ContractRepository contractRepository;
     private final EmailService emailService;
     private final NotificationService notificationService;
 
@@ -148,7 +156,17 @@ public class LegitService {
         if (newStatus == LegitStatus.RESOLU || newStatus == LegitStatus.REJETE) {
             legit.setResolvedAt(LocalDateTime.now());
         }
-        return legitRepository.save(legit);
+        Legit saved = legitRepository.save(legit);
+
+        // Notify both parties of status progression (skip EN_ATTENTE = initial state)
+        if (newStatus != LegitStatus.EN_ATTENTE) {
+            String title = legit.getMissionTitle() != null ? legit.getMissionTitle() : "Mission";
+            if (legit.getReporterId() != null)
+                notificationService.sendLegitStatusUpdatedNotification(legit.getReporterId(), newStatus.name(), title);
+            if (legit.getOtherPartyId() != null)
+                notificationService.sendLegitStatusUpdatedNotification(legit.getOtherPartyId(), newStatus.name(), title);
+        }
+        return saved;
     }
 
     // ─── Admin: send email + in-app notification to reporter ─────────────────
@@ -176,6 +194,126 @@ public class LegitService {
         }
         legit.setUpdatedAt(LocalDateTime.now());
         return legitRepository.save(legit);
+    }
+
+    // ─── Admin: resolution actions ────────────────────────────────────────────
+
+    public Legit adminCancelMission(String legitId, AdminCancelMissionRequest req) {
+        Legit legit = getLegit(legitId);
+        String reason = req.getReason() != null ? req.getReason() : "";
+
+        contractRepository.findById(legit.getContractId() != null ? legit.getContractId() : "").ifPresent(contract -> {
+            contract.setStatus(ContractStatus.CANCELLED);
+            contract.setCancelledAt(LocalDateTime.now());
+            contract.setCancellationReason("Annulé par l'admin suite au litige : " + reason);
+            contractRepository.save(contract);
+        });
+
+        if (legit.getActiveMissionId() != null) {
+            activeMissionRepository.findById(legit.getActiveMissionId()).ifPresent(mission -> {
+                mission.setStatus(ActiveMissionStatus.COMPLETED);
+                activeMissionRepository.save(mission);
+            });
+        }
+
+        legit.setStatus(LegitStatus.RESOLU);
+        legit.setAdminDecision("ANNULE");
+        legit.setAdminNote(reason);
+        legit.setResolvedAt(LocalDateTime.now());
+        legit.setUpdatedAt(LocalDateTime.now());
+        Legit saved = legitRepository.save(legit);
+
+        String title = legit.getMissionTitle() != null ? legit.getMissionTitle() : "Mission";
+        if (legit.getReporterId() != null)
+            notificationService.sendLegitMissionCancelledNotification(legit.getReporterId(), title, reason);
+        if (legit.getOtherPartyId() != null)
+            notificationService.sendLegitMissionCancelledNotification(legit.getOtherPartyId(), title, reason);
+
+        log.info("Admin cancelled mission for legit {}, reason: {}", legitId, reason);
+        return saved;
+    }
+
+    public Legit adminRefundMission(String legitId, AdminRefundRequest req) {
+        double flPct = req.getFreelancerPercentage() != null ? req.getFreelancerPercentage() : 0;
+        double coPct = req.getCompanyPercentage() != null ? req.getCompanyPercentage() : 0;
+        if (Math.abs(flPct + coPct - 100.0) > 0.1) {
+            throw new IllegalArgumentException("Les pourcentages doivent totaliser 100%");
+        }
+        String reason = req.getReason() != null ? req.getReason() : "";
+
+        Legit legit = getLegit(legitId);
+
+        final double[] calculatedAmounts = {0.0, 0.0}; // [freelancer, company]
+        contractRepository.findById(legit.getContractId() != null ? legit.getContractId() : "").ifPresent(contract -> {
+            double total = contract.getTotalAmount() != null ? contract.getTotalAmount() : 0.0;
+            double flAmount = Math.round(total * flPct) / 100.0;
+            double coAmount = Math.round(total * coPct) / 100.0;
+            calculatedAmounts[0] = flAmount;
+            calculatedAmounts[1] = coAmount;
+            contract.setStatus(ContractStatus.CANCELLED);
+            contract.setCancelledAt(LocalDateTime.now());
+            contract.setCancellationReason("Remboursement décidé par l'admin suite au litige : " + reason);
+            contract.setPaymentStatus(PaymentStatus.REFUNDED);
+            contract.setFreelancerRefundAmount(flAmount);
+            contract.setCompanyRefundAmount(coAmount);
+            contractRepository.save(contract);
+        });
+
+        if (legit.getActiveMissionId() != null) {
+            activeMissionRepository.findById(legit.getActiveMissionId()).ifPresent(mission -> {
+                mission.setStatus(ActiveMissionStatus.COMPLETED);
+                activeMissionRepository.save(mission);
+            });
+        }
+
+        legit.setStatus(LegitStatus.RESOLU);
+        legit.setAdminDecision("REMBOURSE");
+        legit.setFreelancerRefundPercentage(flPct);
+        legit.setCompanyRefundPercentage(coPct);
+        legit.setAdminNote(reason);
+        legit.setResolvedAt(LocalDateTime.now());
+        legit.setUpdatedAt(LocalDateTime.now());
+        Legit saved = legitRepository.save(legit);
+
+        String title = legit.getMissionTitle() != null ? legit.getMissionTitle() : "Mission";
+        String freelancerId = "FREELANCER".equals(legit.getReporterRole()) ? legit.getReporterId() : legit.getOtherPartyId();
+        String companyId    = "COMPANY".equals(legit.getReporterRole())    ? legit.getReporterId() : legit.getOtherPartyId();
+
+        if (freelancerId != null)
+            notificationService.sendLegitRefundNotification(freelancerId, title, flPct, "FREELANCER");
+        if (companyId != null)
+            notificationService.sendLegitRefundNotification(companyId, title, coPct, "COMPANY");
+
+        log.info("Admin refund for legit {}: freelancer {}%, company {}%", legitId, flPct, coPct);
+        return saved;
+    }
+
+    public Legit adminContinueMission(String legitId, AdminContinueMissionRequest req) {
+        Legit legit = getLegit(legitId);
+        String note = req.getAdminNote() != null ? req.getAdminNote() : "";
+
+        if (legit.getActiveMissionId() != null) {
+            activeMissionRepository.findById(legit.getActiveMissionId()).ifPresent(mission -> {
+                mission.setStatus(ActiveMissionStatus.ACTIVE);
+                activeMissionRepository.save(mission);
+            });
+        }
+
+        legit.setStatus(LegitStatus.RESOLU);
+        legit.setAdminDecision("CONTINUE");
+        legit.setAdminNote(note);
+        legit.setResolvedAt(LocalDateTime.now());
+        legit.setUpdatedAt(LocalDateTime.now());
+        Legit saved = legitRepository.save(legit);
+
+        String title = legit.getMissionTitle() != null ? legit.getMissionTitle() : "Mission";
+        if (legit.getReporterId() != null)
+            notificationService.sendLegitMissionContinuedNotification(legit.getReporterId(), title);
+        if (legit.getOtherPartyId() != null)
+            notificationService.sendLegitMissionContinuedNotification(legit.getOtherPartyId(), title);
+
+        log.info("Admin continued mission for legit {}", legitId);
+        return saved;
     }
 
     // ─── Stats ────────────────────────────────────────────────────────────────

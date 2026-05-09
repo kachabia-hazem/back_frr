@@ -37,6 +37,7 @@ public class FreelancerPaymentSummaryResponse {
         private String companyName;
         private PaymentStatus paymentStatus;
         private Double freelancerAmount;
+        private Double freelancerRefundAmount;
         private LocalDateTime paidAt;
         private LocalDateTime capturedAt;
     }

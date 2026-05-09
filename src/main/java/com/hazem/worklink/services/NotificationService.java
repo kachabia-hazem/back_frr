@@ -701,4 +701,51 @@ public class NotificationService {
                 message,
                 initiatorName, null, "/active-mission/" + missionId);
     }
+
+    public void sendLegitMissionCancelledNotification(String recipientId, String missionTitle, String reason) {
+        String message = String.format(
+                "Suite au litige concernant la mission \"%s\", l'administrateur a décidé d'annuler la mission.\n" +
+                "Motif : %s\nLes fonds sont conservés par la plateforme.",
+                missionTitle, reason != null && !reason.isBlank() ? reason : "Non précisé");
+        build(recipientId, NotificationType.LEGIT_MISSION_CANCELLED_BY_ADMIN,
+                "Mission annulée par l'admin — " + missionTitle,
+                message, "Équipe WorkLink", "admin", "/dashboard");
+    }
+
+    public void sendLegitRefundNotification(String recipientId, String missionTitle,
+                                             double percentage, String role) {
+        String part = "FREELANCER".equalsIgnoreCase(role) ? "freelancer" : "entreprise";
+        String message = String.format(
+                "Suite au litige concernant la mission \"%s\", l'administrateur a décidé un remboursement.\n" +
+                "Votre part : %.0f%% du montant total. Le contrat est annulé.",
+                missionTitle, percentage);
+        build(recipientId, NotificationType.LEGIT_REFUND_BY_ADMIN,
+                "Remboursement décidé — " + missionTitle,
+                message, "Équipe WorkLink", "admin", "/dashboard");
+    }
+
+    public void sendLegitStatusUpdatedNotification(String recipientId, String newStatus, String missionTitle) {
+        String label = switch (newStatus) {
+            case "EN_COURS" -> "en cours de traitement";
+            case "RESOLU"   -> "résolu";
+            case "REJETE"   -> "rejeté";
+            default         -> newStatus.toLowerCase();
+        };
+        String message = String.format(
+                "Le statut de votre litige concernant la mission \"%s\" a été mis à jour : il est désormais \"%s\".\n" +
+                "Vous serez informé(e) de toute évolution.", missionTitle, label);
+        build(recipientId, NotificationType.LEGIT_STATUS_UPDATED,
+                "Avancement du litige — " + missionTitle,
+                message, "Équipe WorkLink", "admin", "/dashboard");
+    }
+
+    public void sendLegitMissionContinuedNotification(String recipientId, String missionTitle) {
+        String message = String.format(
+                "Suite à l'examen du litige concernant la mission \"%s\", l'administrateur a décidé que la mission doit continuer.\n" +
+                "Le contrat est de nouveau actif. Veuillez reprendre la collaboration.",
+                missionTitle);
+        build(recipientId, NotificationType.LEGIT_MISSION_CONTINUED_BY_ADMIN,
+                "Mission relancée par l'admin — " + missionTitle,
+                message, "Équipe WorkLink", "admin", "/dashboard");
+    }
 }
