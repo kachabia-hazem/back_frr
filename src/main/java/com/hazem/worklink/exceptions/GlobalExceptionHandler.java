@@ -71,7 +71,7 @@ public class GlobalExceptionHandler {
             case "30 Days"  -> endDate = startDate.plusDays(30);
             default         -> { return null; }
         }
-        return endDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH));
+        return endDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy 'at' HH:mm", Locale.ENGLISH));
     }
 
     // Gestion : Mauvais identifiants (login incorrect)

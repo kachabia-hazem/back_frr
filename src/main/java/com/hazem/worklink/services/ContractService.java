@@ -789,7 +789,7 @@ public class ContractService {
             float y2 = pageHeight - 133;
             cs2.beginText(); cs2.setFont(fontBold, 13); cs2.setNonStrokingColor(DARK_NAVY);
             cs2.newLineAtOffset(margin, y2);
-            cs2.showText("ANNEX A — GENERAL PLATFORM TERMS & CONDITIONS"); cs2.endText();
+            cs2.showText("GENERAL PLATFORM TERMS & CONDITIONS"); cs2.endText();
 
             String p2label = "Page 2 of 2";
             float p2w = fontReg.getStringWidth(p2label) / 1000f * 9f;
@@ -806,43 +806,43 @@ public class ContractService {
             // Section data: {header, body}
             String[][] sections2 = {
                 {
-                    "6. PAYMENT METHOD",
+                    "PAYMENT METHOD",
                     "Payments are processed exclusively via Stripe on the WorkLink platform.\n" +
                     "Accepted methods: credit/debit card (Visa, Mastercard). The total amount is displayed\n" +
                     "and confirmed before any charge. No off-platform transfers or cash payments are accepted."
                 },
                 {
-                    "7. ESCROW & FUND RELEASE",
-                    "7.1  Upon contract signing, the agreed amount is held in secure escrow on WorkLink.\n" +
-                    "7.2  Funds are released to the Freelancer only after the Employer validates the deliverables.\n" +
-                    "7.3  A platform service fee is deducted before disbursement and is shown at payment time.\n" +
-                    "7.4  In case of cancellation, refund eligibility depends on the outcome of any active dispute."
+                    "ESCROW & FUND RELEASE",
+                    "•  Upon contract signing, the agreed amount is held in secure escrow on WorkLink.\n" +
+                    "•  Funds are released to the Freelancer only after the Employer validates the deliverables.\n" +
+                    "•  A platform service fee is deducted before disbursement and is shown at payment time.\n" +
+                    "•  In case of cancellation, refund eligibility depends on the outcome of any active dispute."
                 },
                 {
-                    "8. DISPUTE RESOLUTION (LEGIT)",
-                    "8.1  Either party may open a dispute via the platform dashboard at any time during the mission.\n" +
+                    "DISPUTE RESOLUTION",
+                    "•  Either party may open a dispute via the platform dashboard at any time during the mission.\n" +
                     "     The mission is paused immediately and all payment releases are suspended.\n" +
-                    "8.2  Both parties may submit evidence (files, screenshots) through the dispute interface.\n" +
+                    "•  Both parties may submit evidence (files, screenshots) through the dispute interface.\n" +
                     "     Evidence must be factual and relevant.\n" +
-                    "8.3  WorkLink admins review all evidence impartially. Their decision is final and binding.\n" +
-                    "8.4  Outcomes: full/partial payment to Freelancer, full refund to Employer, or other remedies.\n" +
-                    "8.5  Filing false or frivolous disputes may result in immediate account suspension."
+                    "•  WorkLink admins review all evidence impartially. Their decision is final and binding.\n" +
+                    "•  Outcomes: full/partial payment to Freelancer, full refund to Employer, or other remedies.\n" +
+                    "•  Filing false or frivolous disputes may result in immediate account suspension."
                 },
                 {
-                    "9. PLATFORM RULES & OBLIGATIONS",
-                    "9.1  All communications, deliverables, and payments must go through WorkLink exclusively.\n" +
-                    "9.2  Off-platform contracting to bypass fees is strictly prohibited and may lead to legal action.\n" +
-                    "9.3  All profile information must be accurate, complete, and kept up to date.\n" +
-                    "9.4  Both parties must maintain confidentiality of all mission-related information.\n" +
-                    "9.5  Harassment, fraud, impersonation, or false credentials result in account termination."
+                    "PLATFORM RULES & OBLIGATIONS",
+                    "•  All communications, deliverables, and payments must go through WorkLink exclusively.\n" +
+                    "•  Off-platform contracting to bypass fees is strictly prohibited and may lead to legal action.\n" +
+                    "•  All profile information must be accurate, complete, and kept up to date.\n" +
+                    "•  Both parties must maintain confidentiality of all mission-related information.\n" +
+                    "•  Harassment, fraud, impersonation, or false credentials result in account termination."
                 },
                 {
-                    "10. DATA PROTECTION",
+                    "DATA PROTECTION",
                     "WorkLink processes personal data in compliance with applicable data protection laws.\n" +
                     "Data is used solely for platform services and is never sold to third parties."
                 },
                 {
-                    "11. LIMITATION OF LIABILITY",
+                    "LIMITATION OF LIABILITY",
                     "WorkLink is an intermediary platform and is not liable for the quality, timeliness,\n" +
                     "or outcome of mission work, except as expressly stated in these General Terms."
                 }
@@ -872,7 +872,7 @@ public class ContractService {
 
                 cs2.beginText(); cs2.setFont(fontObliq, 8); cs2.setNonStrokingColor(TEXT_GRAY);
                 cs2.newLineAtOffset(margin, y2);
-                cs2.showText("By signing below, both parties confirm they have read and agree to this contract and Annex A.");
+                cs2.showText("By signing below, both parties confirm they have read and agree to this contract and its General Terms.");
                 cs2.endText();
                 y2 -= 16;
 
@@ -926,7 +926,7 @@ public class ContractService {
             cs2.setNonStrokingColor(DARK_NAVY); cs2.addRect(0, 52, pageWidth, 10); cs2.fill();
             cs2.beginText(); cs2.setFont(fontReg, 8); cs2.setNonStrokingColor(Color.WHITE);
             cs2.newLineAtOffset(margin + 65, 27);
-            cs2.showText("WorkLink Platform  |  Annex A - General Terms & Conditions  |  Page 2 of 2");
+            cs2.showText("WorkLink Platform  |  General Terms & Conditions  |  Page 2 of 2");
             cs2.endText();
         }
 

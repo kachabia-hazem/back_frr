@@ -247,11 +247,23 @@ public class AuthService {
         Role role = null;
         String verificationStatus = null;
 
+        LocalDateTime now = LocalDateTime.now();
+
         // Chercher dans Freelancer
         var freelancer = freelancerRepository.findByEmail(email);
         if (freelancer.isPresent()) {
             if (!Boolean.TRUE.equals(freelancer.get().getIsActive())) {
-                throw new UserBannedException(freelancer.get().getBanReason(), freelancer.get().getBanDuration(), freelancer.get().getBanStartDate(), freelancer.get().getId(), "FREELANCER");
+                if (isBanExpired(freelancer.get().getBanStartDate(), freelancer.get().getBanDuration(), now)) {
+                    Freelancer f = freelancer.get();
+                    f.setIsActive(true);
+                    f.setBanReason(null);
+                    f.setBanDuration(null);
+                    f.setBanStartDate(null);
+                    f.setUpdatedAt(now);
+                    freelancerRepository.save(f);
+                } else {
+                    throw new UserBannedException(freelancer.get().getBanReason(), freelancer.get().getBanDuration(), freelancer.get().getBanStartDate(), freelancer.get().getId(), "FREELANCER");
+                }
             }
             userId = freelancer.get().getId();
             role = freelancer.get().getRole();
@@ -262,7 +274,17 @@ public class AuthService {
             var company = companyRepository.findByEmail(email);
             if (company.isPresent()) {
                 if (!Boolean.TRUE.equals(company.get().getIsActive())) {
-                    throw new UserBannedException(company.get().getBanReason(), company.get().getBanDuration(), company.get().getBanStartDate(), company.get().getId(), "COMPANY");
+                    if (isBanExpired(company.get().getBanStartDate(), company.get().getBanDuration(), now)) {
+                        Company c = company.get();
+                        c.setIsActive(true);
+                        c.setBanReason(null);
+                        c.setBanDuration(null);
+                        c.setBanStartDate(null);
+                        c.setUpdatedAt(now);
+                        companyRepository.save(c);
+                    } else {
+                        throw new UserBannedException(company.get().getBanReason(), company.get().getBanDuration(), company.get().getBanStartDate(), company.get().getId(), "COMPANY");
+                    }
                 }
                 userId = company.get().getId();
                 role = company.get().getRole();
@@ -383,5 +405,19 @@ public class AuthService {
         return freelancerRepository.existsByEmail(email) ||
                 companyRepository.existsByEmail(email) ||
                 adminRepository.existsByEmail(email);
+    }
+
+    private boolean isBanExpired(LocalDateTime banStartDate, String banDuration, LocalDateTime now) {
+        if (banStartDate == null || banDuration == null || banDuration.isBlank()) return false;
+        if ("Permanent".equalsIgnoreCase(banDuration)) return false;
+        LocalDateTime expiry = switch (banDuration) {
+            case "1 Day"   -> banStartDate.plusDays(1);
+            case "3 Days"  -> banStartDate.plusDays(3);
+            case "7 Days"  -> banStartDate.plusDays(7);
+            case "14 Days" -> banStartDate.plusDays(14);
+            case "30 Days" -> banStartDate.plusDays(30);
+            default        -> null;
+        };
+        return expiry != null && !now.isBefore(expiry);
     }
 }
