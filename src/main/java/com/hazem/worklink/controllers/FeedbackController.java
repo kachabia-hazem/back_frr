@@ -58,8 +58,8 @@ public class FeedbackController {
     @PutMapping("/api/admin/feedbacks/{id}/reject")
     public ResponseEntity<Feedback> rejectFeedback(
             @PathVariable String id,
-            @RequestBody Map<String, String> body) {
-        String reason = body.getOrDefault("reason", "");
+            @RequestBody(required = false) Map<String, String> body) {
+        String reason = body != null ? body.getOrDefault("reason", "") : "";
         return ResponseEntity.ok(feedbackService.rejectFeedback(id, reason));
     }
 

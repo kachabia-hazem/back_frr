@@ -135,7 +135,8 @@ public class FeedbackService {
         feedback.setStatus(FeedbackStatus.VALIDATED);
         feedback.setValidatedAt(LocalDateTime.now());
         Feedback saved = feedbackRepository.save(feedback);
-        notificationService.sendFeedbackValidatedNotification(saved.getUserId());
+        try { notificationService.sendFeedbackValidatedNotification(saved.getUserId()); }
+        catch (Exception e) { log.warn("Notification failed for feedback {} validation: {}", id, e.getMessage()); }
         log.info("Feedback {} validated by admin", id);
         return saved;
     }
@@ -148,7 +149,8 @@ public class FeedbackService {
         feedback.setRejectionReason(reason);
         feedback.setRejectedAt(LocalDateTime.now());
         Feedback saved = feedbackRepository.save(feedback);
-        notificationService.sendFeedbackRejectedNotification(saved.getUserId(), reason);
+        try { notificationService.sendFeedbackRejectedNotification(saved.getUserId(), reason); }
+        catch (Exception e) { log.warn("Notification failed for feedback {} rejection: {}", id, e.getMessage()); }
         log.info("Feedback {} rejected by admin, reason: {}", id, reason);
         return saved;
     }

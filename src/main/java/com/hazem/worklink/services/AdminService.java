@@ -212,7 +212,8 @@ public class AdminService {
         String companyId = mission.getCompanyId();
         String jobTitle = mission.getJobTitle();
         missionRepository.deleteById(missionId);
-        notificationService.sendMissionDeletedByAdminNotification(companyId, jobTitle, reason);
+        try { notificationService.sendMissionDeletedByAdminNotification(companyId, jobTitle, reason); }
+        catch (Exception e) { log.warn("Notification failed for mission {} deletion: {}", missionId, e.getMessage()); }
         log.info("Mission deleted by admin: {} ({}), reason: {}", jobTitle, missionId, reason);
     }
 
