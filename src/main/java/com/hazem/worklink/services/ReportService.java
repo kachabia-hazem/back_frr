@@ -24,6 +24,7 @@ public class ReportService {
     private final FreelancerRepository freelancerRepository;
     private final CompanyRepository companyRepository;
     private final EmailService emailService;
+    private final NotificationService notificationService;
 
     // ─── Create (Freelancer or Company) ──────────────────────────────────────
 
@@ -109,6 +110,10 @@ public class ReportService {
             );
         }
 
+        if (saved.getReportedById() != null) {
+            notificationService.sendReportWarnedNotification(saved.getReportedById(), note);
+        }
+
         log.info("Warning sent for report {} — note: {}", id, note);
         return saved;
     }
@@ -131,6 +136,10 @@ public class ReportService {
                     saved.getReportedByName() != null ? saved.getReportedByName() : "User",
                     reason
             );
+        }
+
+        if (saved.getReportedById() != null) {
+            notificationService.sendReportRejectedNotification(saved.getReportedById(), reason);
         }
 
         log.info("Report {} rejected, reason: {}", id, reason);

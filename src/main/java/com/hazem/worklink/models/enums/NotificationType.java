@@ -59,6 +59,10 @@ public enum NotificationType {
     CONTRACT_PAYMENT_RELEASED,          // freelancer: funds released after validation
     PACK_PURCHASED,                     // user: points credited after Stripe checkout
 
+    // ── Report notifications ──────────────────────────────────────────
+    REPORT_WARNED,      // reported-against party: admin issued a warning following a report
+    REPORT_REJECTED,    // reporter: admin rejected their report
+
     // ── Legit (dispute) notifications ────────────────────────────────
     LEGIT_OPENED,                         // both parties: a dispute was opened on a mission
     LEGIT_RESPONSE_FROM_ADMIN,            // user: admin sent a response to their legit
