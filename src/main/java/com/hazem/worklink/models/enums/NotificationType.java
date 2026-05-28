@@ -30,6 +30,7 @@ public enum NotificationType {
 
     // ── Mission lifecycle notifications ───────────────────────────────
     MISSION_ACTIVATED,             // freelancer + company: pending mission start date reached
+    ACTIVE_MISSION_CANCELLED,      // freelancer + company: active mission cancelled due to company non-payment
 
     // ── Admin / Company verification notifications ────────────────────────────
     COMPANY_PENDING_VERIFICATION,  // company: inscription en attente de validation
@@ -43,6 +44,7 @@ public enum NotificationType {
     CONTRACT_CANCELLED_BY_ADMIN,   // freelancer + company: contrat annulé par l'admin
     CONTRACT_AUTO_CANCELLED,              // freelancer + company: payment deadline expired, auto-cancelled
     CONTRACT_PAYMENT_DEADLINE_WARNING,    // company: payment deadline approaching (3 days / 1 day before)
+    CONTRACT_EXPIRED_UNSIGNED,            // freelancer + company: contract auto-cancelled — freelancer never signed
 
     // ── Feedback moderation ───────────────────────────────────────────
     FEEDBACK_VALIDATED,            // user: feedback approuvé et publié sur la page d'accueil

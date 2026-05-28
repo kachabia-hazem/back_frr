@@ -48,7 +48,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/reports/public").permitAll()
                         .requestMatchers("/api/files/**").permitAll()
                         .requestMatchers("/api/webhook/**").permitAll()
-                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/ws", "/ws/**").permitAll()
                         .requestMatchers("/api/messages/**").hasAnyAuthority("FREELANCER", "COMPANY")
                         .requestMatchers("/api/freelancer/public/**").permitAll()
                         .requestMatchers("/api/company/public/**").permitAll()

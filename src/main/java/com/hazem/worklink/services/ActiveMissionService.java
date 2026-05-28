@@ -124,6 +124,7 @@ public class ActiveMissionService {
     public Task createTask(String missionId, CreateTaskRequest req, String email) {
         ActiveMission mission = getByIdForUser(missionId, email);
         assertFreelancer(mission, email);
+        assertMissionEditable(mission);
 
         List<Task> existing = taskRepository.findByMissionIdOrderByOrderIndexAsc(missionId);
         int nextIndex = existing.isEmpty() ? 0 : existing.get(existing.size() - 1).getOrderIndex() + 1;
@@ -144,6 +145,7 @@ public class ActiveMissionService {
     public Task updateTask(String missionId, String taskId, UpdateTaskRequest req, String email) {
         ActiveMission mission = getByIdForUser(missionId, email);
         assertFreelancer(mission, email);
+        assertMissionEditable(mission);
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found: " + taskId));
@@ -163,6 +165,7 @@ public class ActiveMissionService {
     public void deleteTask(String missionId, String taskId, String email) {
         ActiveMission mission = getByIdForUser(missionId, email);
         assertFreelancer(mission, email);
+        assertMissionEditable(mission);
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found: " + taskId));
@@ -202,6 +205,7 @@ public class ActiveMissionService {
     public ActiveMission setGitRepoUrl(String missionId, String repoUrl, String email) {
         ActiveMission mission = getByIdForUser(missionId, email);
         assertFreelancer(mission, email);
+        assertMissionEditable(mission);
         mission.setGitRepositoryUrl(repoUrl);
         return activeMissionRepository.save(mission);
     }
@@ -236,6 +240,7 @@ public class ActiveMissionService {
     public Deliverable uploadDeliverable(String missionId, MultipartFile file, String description, String email) {
         ActiveMission mission = getByIdForUser(missionId, email);
         assertFreelancer(mission, email);
+        assertMissionEditable(mission);
 
         String fileUrl = fileStorageService.storeDeliverable(file);
 
@@ -402,32 +407,34 @@ public class ActiveMissionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Active mission not found: " + missionId));
         assertFreelancer(mission, email);
 
-        if (mission.getStatus() != ActiveMissionStatus.COMPLETED) {
-            throw new IllegalStateException("Only completed missions can be removed from history");
+        if (mission.getStatus() != ActiveMissionStatus.COMPLETED
+                && mission.getStatus() != ActiveMissionStatus.CANCELLED) {
+            throw new IllegalStateException("Only completed or cancelled missions can be removed from history");
         }
 
         taskRepository.deleteByMissionId(missionId);
         deliverableRepository.deleteByMissionId(missionId);
         activeMissionRepository.delete(mission);
-        log.info("Freelancer removed completed mission {} from history", missionId);
+        log.info("Freelancer removed mission {} (status: {}) from history", missionId, mission.getStatus());
     }
 
     /**
-     * Company removes a COMPLETED mission from their tracking history.
+     * Company removes a COMPLETED or CANCELLED mission from their tracking history.
      */
     public void deleteFromHistoryByCompany(String missionId, String email) {
         ActiveMission mission = activeMissionRepository.findById(missionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Active mission not found: " + missionId));
         assertCompany(mission, email);
 
-        if (mission.getStatus() != ActiveMissionStatus.COMPLETED) {
-            throw new IllegalStateException("Only completed missions can be removed from history");
+        if (mission.getStatus() != ActiveMissionStatus.COMPLETED
+                && mission.getStatus() != ActiveMissionStatus.CANCELLED) {
+            throw new IllegalStateException("Only completed or cancelled missions can be removed from history");
         }
 
         taskRepository.deleteByMissionId(missionId);
         deliverableRepository.deleteByMissionId(missionId);
         activeMissionRepository.delete(mission);
-        log.info("Company removed completed mission {} from history", missionId);
+        log.info("Company removed mission {} (status: {}) from history", missionId, mission.getStatus());
     }
 
     /**
@@ -447,6 +454,18 @@ public class ActiveMissionService {
                 .map(f -> f.getId().equals(mission.getFreelancerId())).orElse(false);
         if (!isFreelancer) {
             throw new RuntimeException("Only the freelancer assigned to this mission can perform this action");
+        }
+    }
+
+    private void assertMissionEditable(ActiveMission mission) {
+        if (mission.getStatus() == ActiveMissionStatus.CANCELLED) {
+            throw new IllegalStateException("This mission has been cancelled due to non-payment and can no longer be modified.");
+        }
+        if (mission.getStatus() == ActiveMissionStatus.COMPLETED) {
+            throw new IllegalStateException("This mission is already completed and can no longer be modified.");
+        }
+        if (mission.getStatus() == ActiveMissionStatus.PENDING) {
+            throw new IllegalStateException("This mission is pending and cannot be modified until the contract is paid and the start date is reached.");
         }
     }
 

@@ -47,6 +47,11 @@ public class MissionService {
             throw new RuntimeException("Votre compte a été refusé. Veuillez contacter l'administrateur.");
         }
 
+        if (request.getApplicationDeadline() != null && request.getStartDate() != null
+                && !request.getApplicationDeadline().isBefore(request.getStartDate())) {
+            throw new IllegalArgumentException("Application deadline must be before the start date.");
+        }
+
         Mission mission = new Mission();
         mission.setCompanyId(company.getId());
         mission.setJobTitle(request.getJobTitle());
@@ -206,6 +211,10 @@ public class MissionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Mission not found with id: " + missionId));
         if (!mission.getCompanyId().equals(company.getId())) {
             throw new RuntimeException("You are not authorized to update this mission");
+        }
+        if (request.getApplicationDeadline() != null && request.getStartDate() != null
+                && !request.getApplicationDeadline().isBefore(request.getStartDate())) {
+            throw new IllegalArgumentException("Application deadline must be before the start date.");
         }
         mission.setJobTitle(request.getJobTitle());
         mission.setField(request.getField());

@@ -346,15 +346,42 @@ public class NotificationService {
     /** Contract 5 – Reminder sent to freelancer 3 days after contract creation if still unsigned */
     public void sendContractSignatureReminderNotification(String freelancerId, String missionTitle, String companyName) {
         String message = String.format(
-                "Reminder: You have a pending contract for the mission \"%s\" by %s that is still awaiting your signature.\n" +
-                "Please sign it as soon as possible to officially start the mission.\n" +
+                "Reminder: You have a pending contract for the mission \"%s\" by %s that is still awaiting your signature.\n\n" +
+                "Important: If you do not sign within 1 day, the contract will be automatically cancelled.\n\n" +
+                "Please sign it as soon as possible to officially start the mission. " +
                 "You can review and sign the contract in your Contracts section.",
                 missionTitle, companyName);
 
         build(freelancerId, NotificationType.CONTRACT_SIGNATURE_REMINDER,
-                "Contract Signature Reminder \u23F0",
+                "Final Reminder \u23F0 \u2014 Sign Your Contract Within 1 Day",
                 message,
                 "WorkLink", null, "/freelancer-contracts");
+    }
+
+    /** Contract 6 \u2013 Auto-cancelled because freelancer did not sign within 4 days */
+    public void sendContractExpiredUnsignedNotification(
+            String freelancerId, String companyId, String missionTitle, String freelancerName) {
+
+        String freelancerMessage = String.format(
+                "The contract for the mission \"%s\" has been automatically cancelled because you did not sign it within the allowed period.\n\n" +
+                "If you are still interested in this mission, please contact the company directly or apply again when the position is re-opened.",
+                missionTitle);
+
+        build(freelancerId, NotificationType.CONTRACT_EXPIRED_UNSIGNED,
+                "Contract Expired \u2014 Signature Not Received",
+                freelancerMessage,
+                "WorkLink Team", null, "/freelancer-contracts");
+
+        String companyMessage = String.format(
+                "The contract for the mission \"%s\" sent to freelancer %s has been automatically cancelled because the freelancer did not sign it within the allowed period (4 days).\n\n" +
+                "You can now select another candidate from the pending applications for this mission.\n" +
+                "Go to your mission page to review other applicants.",
+                missionTitle, freelancerName);
+
+        build(companyId, NotificationType.CONTRACT_EXPIRED_UNSIGNED,
+                "Contract Expired \u2014 Freelancer Did Not Sign",
+                companyMessage,
+                "WorkLink Team", null, "/company-contracts");
     }
 
     /** Mission Validation 1 – Sent to company when freelancer submits work for validation */
@@ -829,5 +856,29 @@ public class NotificationService {
         build(companyId, NotificationType.CONTRACT_AUTO_CANCELLED,
                 "Contract Cancelled — Payment Deadline Expired",
                 companyMessage, "WorkLink Team", null, "/company-contracts");
+    }
+
+    /** Active mission cancelled because the company did not pay before start date */
+    public void sendActiveMissionCancelledDueToNonPaymentNotification(
+            String freelancerId, String companyId, String missionTitle, String companyName) {
+
+        String freelancerMessage = String.format(
+                "Your active mission \"%s\" has been automatically cancelled.\n\n" +
+                "Reason: The company \"%s\" did not complete the payment for this contract before the mission start date.\n\n" +
+                "The contract and the active mission are now both cancelled.\n" +
+                "No action is required on your part. If you have questions, please contact support.",
+                missionTitle, companyName);
+        build(freelancerId, NotificationType.ACTIVE_MISSION_CANCELLED,
+                "Mission Cancelled — Company Did Not Pay",
+                freelancerMessage, "WorkLink Team", null, "/freelancer-missions");
+
+        String companyMessage = String.format(
+                "The active mission \"%s\" has been automatically cancelled because you did not complete the payment before the mission start date.\n\n" +
+                "Both the contract and the active mission are now cancelled.\n\n" +
+                "If you still wish to work with this freelancer, please create a new contract and ensure the payment is completed before the start date.",
+                missionTitle);
+        build(companyId, NotificationType.ACTIVE_MISSION_CANCELLED,
+                "Mission Cancelled — Payment Not Completed",
+                companyMessage, "WorkLink Team", null, "/company-missions");
     }
 }

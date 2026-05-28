@@ -6,5 +6,6 @@ public enum ActiveMissionStatus {
     SUBMITTED,   // Freelancer marked work as done — awaiting company validation
     COMPLETED,
     PAUSED,
-    DISPUTE
+    DISPUTE,
+    CANCELLED    // Contract auto-cancelled due to company non-payment
 }
