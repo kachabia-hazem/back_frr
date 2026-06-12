@@ -126,7 +126,7 @@ public class ContractService {
 
         // Notify freelancer
         try {
-            notificationService.sendContractGeneratedNotification(
+            notificationService.sendContractGeneratedNotification(  
                     freelancer.getId(), mission.getJobTitle(), company.getCompanyName(), saved.getId());
         } catch (Exception e) {
             log.error("Failed to send contract generated notification: {}", e.getMessage());
