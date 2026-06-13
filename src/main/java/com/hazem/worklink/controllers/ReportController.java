@@ -62,13 +62,6 @@ public class ReportController {
         return ResponseEntity.ok(reportService.updateStatus(id, status));
     }
 
-    @PostMapping("/api/admin/reports/{id}/warn")
-    public ResponseEntity<Report> warnReporter(@PathVariable String id,
-                                               @RequestBody Map<String, String> body) {
-        String note = body.getOrDefault("note", "");
-        return ResponseEntity.ok(reportService.warnReporter(id, note));
-    }
-
     @PostMapping("/api/admin/reports/{id}/reject")
     public ResponseEntity<Report> rejectReport(@PathVariable String id,
                                                @RequestBody RejectReportRequest req) {

@@ -817,17 +817,6 @@ public class NotificationService {
 
     // ─── Report decision notifications ──────────────────────────────────────────
 
-    /** Sent to the reporter when admin issues a warning following their report */
-    public void sendReportWarnedNotification(String reporterId, String note) {
-        String message = String.format(
-                "Your report has been reviewed by the WorkLink admin team. A formal warning has been issued to the reported party.\n\n" +
-                "Admin note: %s\n\n" +
-                "Thank you for helping keep the platform safe.",
-                note != null && !note.isBlank() ? note : "No additional note provided.");
-        build(reporterId, NotificationType.REPORT_WARNED,
-                "Report Processed — Warning Issued", message, "WorkLink Admin", null, "/dashboard");
-    }
-
     /** Sent to the reporter when admin rejects their report */
     public void sendReportRejectedNotification(String reporterId, String reason) {
         String message = String.format(

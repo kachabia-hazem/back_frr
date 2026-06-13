@@ -86,38 +86,6 @@ public class ReportService {
         return reportRepository.save(report);
     }
 
-    // ─── Admin: simple warning ────────────────────────────────────────────────
-
-    public Report warnReporter(String id, String note) {
-        Report report = getReport(id);
-        report.setAdminNote(note);
-        report.setStatus(ReportStatus.TRAITE);
-        report.setUpdatedAt(LocalDateTime.now());
-        report.setResolvedAt(LocalDateTime.now());
-
-        Report saved = reportRepository.save(report);
-
-        // Notify reported-against party that a report about them was reviewed
-        if (saved.getReportedAgainstEmail() != null) {
-            emailService.sendNotificationEmail(
-                    saved.getReportedAgainstEmail(),
-                    saved.getReportedAgainstName() != null ? saved.getReportedAgainstName() : "User",
-                    "Avertissement — WorkLink",
-                    "Suite à un signalement à votre encontre, l'équipe WorkLink vous adresse un avertissement formel.\n\n" +
-                    "Note de l'administrateur : " + note + "\n\n" +
-                    "Veuillez respecter les règles de la plateforme pour éviter toute suspension de compte.",
-                    "/dashboard"
-            );
-        }
-
-        if (saved.getReportedById() != null) {
-            notificationService.sendReportWarnedNotification(saved.getReportedById(), note);
-        }
-
-        log.info("Warning sent for report {} — note: {}", id, note);
-        return saved;
-    }
-
     // ─── Admin: reject with email to reporter ────────────────────────────────
 
     public Report rejectReport(String id, String reason) {
